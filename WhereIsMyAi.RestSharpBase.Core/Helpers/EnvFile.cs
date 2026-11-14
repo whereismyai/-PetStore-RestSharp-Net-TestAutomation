@@ -11,7 +11,7 @@ namespace WhereIsMyAi.RestSharpBase.Core.Helpers;
 /// </summary>
 public static class EnvFile
 {
-    private static readonly Lazy<Dictionary<string, string>> Values = new(Load);
+    private static readonly Lazy<(Dictionary<string, string> Values, string? Folder)> File = new(Load);
 
     /// <summary>A required setting; throws when it is missing.</summary>
     public static string Get(string key) =>
@@ -25,20 +25,30 @@ public static class EnvFile
         if (!string.IsNullOrWhiteSpace(value))
             return value;
 
-        return Values.Value.TryGetValue(key, out value) && !string.IsNullOrWhiteSpace(value) ? value : null;
+        return File.Value.Values.TryGetValue(key, out value) && !string.IsNullOrWhiteSpace(value) ? value : null;
     }
 
-    private static Dictionary<string, string> Load()
+    /// <summary>
+    /// An optional path setting as a full path; null when it is missing. A relative path is resolved against
+    /// the folder of the .env file (the current directory when there is no .env file).
+    /// </summary>
+    public static string? TryGetPath(string key)
+    {
+        var value = TryGet(key);
+        return value == null ? null : Path.GetFullPath(value, File.Value.Folder ?? Directory.GetCurrentDirectory());
+    }
+
+    private static (Dictionary<string, string> Values, string? Folder) Load()
     {
         var values = new Dictionary<string, string>();
 
         for (var dir = new DirectoryInfo(AppContext.BaseDirectory); dir != null; dir = dir.Parent)
         {
             var path = Path.Combine(dir.FullName, ".env");
-            if (!File.Exists(path))
+            if (!System.IO.File.Exists(path))
                 continue;
 
-            foreach (var line in File.ReadAllLines(path))
+            foreach (var line in System.IO.File.ReadAllLines(path))
             {
                 var trimmed = line.Trim();
                 var separator = trimmed.IndexOf('=');
@@ -48,9 +58,9 @@ public static class EnvFile
                 values[trimmed[..separator].Trim()] = trimmed[(separator + 1)..].Trim().Trim('"');
             }
 
-            break;
+            return (values, dir.FullName);
         }
 
-        return values;
+        return (values, null);
     }
 }

@@ -105,18 +105,19 @@ public class PetSteps : BaseStep
 
     // Recommended ID: the one used on creation - '{run_id_int}12345' for an explicit Id,
     // '{created-id:1}' (1st pet of the scenario, 2 = 2nd, ...) for a backend-generated one.
+    // Sent as written, so an invalid ID ('abc') can be tested too.
     // Use it for pets the scenario did not create (a pet that never existed, a rejected one).
     [When(@"^the pet with ID '([^']+)' is retrieved via GET /pet/\{id\}$")]
-    public void WhenThePetWithIdIsRetrieved(string petId) => GetPet(long.Parse(ReplaceVariables(petId)));
+    public void WhenThePetWithIdIsRetrieved(string petId) => GetPet(ReplaceVariables(petId));
 
     // A pet created earlier in this scenario, by its name (the name must be unique within the scenario).
     [When(@"^the created pet named '([^']+)' is retrieved via GET /pet/\{id\}$")]
-    public void WhenTheCreatedPetNamedIsRetrieved(string name) => GetPet(_createdPets.Named(ReplaceVariables(name)).Id!.Value);
+    public void WhenTheCreatedPetNamedIsRetrieved(string name) => GetPet(_createdPets.Named(ReplaceVariables(name)).Id!.Value.ToString());
 
     [When(@"^the last created pet is retrieved via GET /pet/\{id\}$")]
-    public void WhenTheLastCreatedPetIsRetrieved() => GetPet(_createdPets.LastId);
+    public void WhenTheLastCreatedPetIsRetrieved() => GetPet(_createdPets.LastId.ToString());
 
-    private void GetPet(long petId) => _lastResponse.Value = _petApi.GetPetById(petId);
+    private void GetPet(string petId) => _lastResponse.Value = _petApi.GetPetById(petId);
 
     #endregion
 
@@ -140,7 +141,8 @@ public class PetSteps : BaseStep
     #region Pet response checks
 
     // Checks the listed fields only - use it where the expected values are the point of the scenario.
-    // Special values in the Value column: 'null' = field is absent/null, '[]' = empty list.
+    // Special values in the Value column: 'null' = field is absent/null, '[]' = empty list,
+    // '{valid-number}' = Id is present with any value.
     // Tags are written as on creation: 'id:name' for a tag with an id, 'name' without one.
     // Recommended for Id: always check the exact value - '{run_id_int}12345' when the scenario set the Id,
     // '{created-id:N}' (N-th pet created in the scenario) when the backend generated it.
@@ -157,6 +159,7 @@ public class PetSteps : BaseStep
 
             switch (row["Field"].ToLowerInvariant())
             {
+                case "id" when expected == "{valid-number}": pet.Id.Should().NotBeNull(); break;
                 case "id": pet.Id.Should().Be(expected == null ? null : long.Parse(expected)); break;
                 case "name": pet.Name.Should().Be(expected); break;
                 case "status": pet.Status.Should().Be(expected); break;
@@ -179,6 +182,10 @@ public class PetSteps : BaseStep
     [Then(@"^the response should have '(\d+)' status code and match the last created pet$")]
     public void ThenTheResponseShouldMatchTheLastCreatedPet(int statusCode) =>
         AssertMatches(statusCode, _createdPets.Last);
+
+    [Then(@"^the created pets should have different IDs$")]
+    public void ThenTheCreatedPetsShouldHaveDifferentIds() =>
+        _createdPets.Value.Select(pet => pet.Id).Should().OnlyHaveUniqueItems();
 
     private void AssertMatches(int statusCode, PetDto expected) =>
         ReadPet(statusCode).Should().BeEquivalentTo(expected, options => options.WithStrictOrdering());

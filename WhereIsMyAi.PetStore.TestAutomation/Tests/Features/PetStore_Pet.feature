@@ -81,6 +81,74 @@ Rule: POST /pet stores the pet exactly as it was sent
         When the created pet named 'Max' is retrieved via GET /pet/{id}
         Then the response should have '200' status code and match the created pet named 'Max'
 
+    # No Id is given (it is sent as null, which the API treats the same as a missing id), so the backend
+    # must assign a distinct one per pet. Each GET by the generated Id must return that pet, not the other one.
+    # BUG-002: the API returns 9223372036854775807 for every such pet, so the second one overwrites the first.
+    @bug:BUG-002
+    Scenario: Pets created without an ID get their own generated IDs
+        When pet is created with the following values via POST /pet
+            | Field    | Value     |
+            | Name     | Toothless |
+            | Category | DRAGONS   |
+        Then the response should have '200' status code and contain the following values
+            | Field     | Value          |
+            | Id        | {valid-number} |
+            | Name      | Toothless      |
+            | Status    | null           |
+            | Category  | DRAGONS        |
+            | PhotoUrls | []             |
+            | Tags      | []             |
+        When pet is created with the following values via POST /pet
+            | Field    | Value      |
+            | Name     | Stormfly   |
+            | Category | NIGHT_FURY |
+        Then the response should have '200' status code and contain the following values
+            | Field    | Value          |
+            | Id       | {valid-number} |
+            | Name     | Stormfly       |
+            | Category | NIGHT_FURY     |
+        And the created pets should have different IDs
+        When the created pet named 'Toothless' is retrieved via GET /pet/{id}
+        Then the response should have '200' status code and match the created pet named 'Toothless'
+        When the created pet named 'Stormfly' is retrieved via GET /pet/{id}
+        Then the response should have '200' status code and match the created pet named 'Stormfly'
+
+    # BUG-001: the API answers 200 and silently overwrites the existing pet (upsert).
+    @bug:BUG-001
+    Scenario: Creating a pet with an existing ID is rejected and the existing pet is kept
+        Given pet is created with the following values via POST /pet
+            | Field  | Value             |
+            | Id     | {run_id_int}12348 |
+            | Name   | First             |
+            | Status | available         |
+        When pet is created with the following values via POST /pet
+            | Field  | Value             |
+            | Id     | {run_id_int}12348 |
+            | Name   | Second            |
+            | Status | sold              |
+        Then the response status should be '409'
+        When the created pet named 'First' is retrieved via GET /pet/{id}
+        Then the response should have '200' status code and match the created pet named 'First'
+
+    # The spec marks name as required and status as an enum; for invalid input it defines 405 Invalid input.
+    # BUG-003: the API accepts both pets below with 200 and stores them.
+    @bug:BUG-003
+    Scenario Outline: An invalid pet is rejected and nothing is stored
+        When pet is created with the following values via POST /pet
+            | Field  | Value            |
+            | Id     | {run_id_int}<id> |
+            | Name   | <name>           |
+            | Status | <status>         |
+        Then the response status should be '405'
+        When the pet with ID '{run_id_int}<id>' is retrieved via GET /pet/{id}
+        Then the response status should be '404'
+        And the response message should be 'Pet not found'
+
+        Examples:
+            | case                  | name | status    | id    |
+            | missing required name | null | available | 30001 |
+            | status not in enum    | Rex  | flying    | 30002 |
+
 Rule: GET /pet/{id} returns the stored pet or a clear error
     The found case is checked by every POST scenario: each created pet is read back and must match.
 
@@ -89,6 +157,14 @@ Rule: GET /pet/{id} returns the stored pet or a clear error
         When the pet with ID '{run_id_int}99999' is retrieved via GET /pet/{id}
         Then the response status should be '404'
         And the response message should be 'Pet not found'
+
+    # The spec defines 400 Invalid ID supplied for this case.
+    # BUG-004: the API answers 404 with the server's Java exception text as the message.
+    @bug:BUG-004
+    Scenario: Getting a pet by a non-numeric ID is rejected as an invalid ID
+        When the pet with ID 'abc' is retrieved via GET /pet/{id}
+        Then the response status should be '400'
+        And the response message should be 'Invalid ID supplied'
 
 Rule: DELETE /pet/{id} removes exactly the requested pet
 
