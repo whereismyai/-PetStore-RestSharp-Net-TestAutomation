@@ -9,15 +9,10 @@ using WhereIsMyAi.PetStore.TestAutomation.RuntimeVariables;
 using WhereIsMyAi.RestSharpBase.Core.Helpers;
 using WhereIsMyAi.PetStore.TestAutomation.Utils;
 using Reqnroll;
-using RestSharp;
 
 namespace WhereIsMyAi.PetStore.TestAutomation.Steps;
 
-/// <summary>
-/// Pet steps, one region per action: creation, retrieval, deletion, and the checks of a pet response.
-/// Retrieval and deletion each have the same three ways to name the pet:
-/// by ID ('{run_id_int}12345'), by name ('Rex' - a pet created in this scenario), or the last created pet.
-/// </summary>
+/// <summary>Pet steps. A pet is addressed by ID, by name (unique per scenario) or as the last created pet.</summary>
 [Binding]
 public class PetSteps : BaseStep
 {
@@ -35,25 +30,9 @@ public class PetSteps : BaseStep
 
     #region Pet creation - POST /pet
 
-    // The action under test: the response is checked by the next Then step.
-    // Repeated "PhotoUrl" / "Tag" rows accumulate into lists, so one table shape covers all cases.
-    // A 'null' value leaves the field out (e.g. | Name | null | for a pet without the required name).
-    // Recommended: give an explicit Id the {run_id_int} prefix - | Id | {run_id_int}12345 | - so a rerun never
-    // collides with a pet left behind by an earlier run. Leave Id out to let the backend generate it.
-    // Recommended: give every pet of a scenario its own name, so later steps can refer to it by name.
+    // Repeated PhotoUrl / Tag rows build lists; 'null' leaves a field out. Prefix explicit Ids with {run_id_int}.
     [When(@"^pet is created with the following values via POST /pet$")]
-    public void WhenPetIsCreated(Table table) => CreatePet(table);
-
-    // A precondition: same table as above, but fails right away if the POST is not successful.
-    [Given(@"^pet is created with the following values via POST /pet$")]
-    public void GivenPetIsCreated(Table table)
-    {
-        var response = CreatePet(table);
-        response.IsSuccessful.Should().BeTrue("the precondition POST /pet must succeed, response: {0}", response.Content);
-    }
-
-    // Sends the pet and remembers it (as the POST returned it) for later steps and for cleanup.
-    private RestResponse CreatePet(Table table)
+    public void WhenPetIsCreated(Table table)
     {
         var response = _petApi.CreatePet(BuildPet(table));
         _lastResponse.Value = response;
@@ -61,8 +40,6 @@ public class PetSteps : BaseStep
         var createdPet = response.IsSuccessful ? response.Content<PetDto>() : null;
         if (createdPet?.Id != null)
             _createdPets.Value.Add(createdPet);
-
-        return response;
     }
 
     private PetDto BuildPet(Table table)
@@ -103,13 +80,10 @@ public class PetSteps : BaseStep
 
     #region Pet retrieval - GET /pet/{id}
 
-    // Recommended ID: the one used on creation - '{run_id_int}12345'. Sent as written, so an invalid ID ('abc')
-    // can be tested too. Use it for pets the scenario did not create (a rejected one, an invalid ID);
-    // a pet the scenario created is addressed by name or as the last created pet.
+    // For pets the scenario did not create; the ID is sent as written, so 'abc' works too.
     [When(@"^the pet with ID '([^']+)' is retrieved via GET /pet/\{id\}$")]
     public void WhenThePetWithIdIsRetrieved(string petId) => GetPet(ReplaceVariables(petId));
 
-    // A pet created earlier in this scenario, by its name (the name must be unique within the scenario).
     [When(@"^the created pet named '([^']+)' is retrieved via GET /pet/\{id\}$")]
     public void WhenTheCreatedPetNamedIsRetrieved(string name) => GetPet(_createdPets.Named(ReplaceVariables(name)).Id!.Value.ToString());
 
@@ -122,25 +96,14 @@ public class PetSteps : BaseStep
 
     #region Pet deletion - DELETE /pet/{id}
 
-    // Recommended ID: as for GET - '{run_id_int}12345'.
     [When(@"^the pet with ID '([^']+)' is deleted via DELETE /pet/\{id\}$")]
     public void WhenThePetWithIdIsDeleted(string petId) => DeletePet(ReplaceVariables(petId));
 
-    // A pet created earlier in this scenario, by its name (the name must be unique within the scenario).
     [When(@"^the created pet named '([^']+)' is deleted via DELETE /pet/\{id\}$")]
     public void WhenTheCreatedPetNamedIsDeleted(string name) => DeletePet(_createdPets.Named(ReplaceVariables(name)).Id!.Value.ToString());
 
     [When(@"^the last created pet is deleted via DELETE /pet/\{id\}$")]
     public void WhenTheLastCreatedPetIsDeleted() => DeletePet(_createdPets.LastId.ToString());
-
-    // A precondition (e.g. "a pet that no longer exists"): fails right away if the DELETE is not successful.
-    [Given(@"^the last created pet is deleted via DELETE /pet/\{id\}$")]
-    public void GivenTheLastCreatedPetIsDeleted()
-    {
-        WhenTheLastCreatedPetIsDeleted();
-        _lastResponse.Value.IsSuccessful.Should().BeTrue("the precondition DELETE /pet/{{id}} must succeed, response: {0}",
-            _lastResponse.Value.Content);
-    }
 
     private void DeletePet(string petId) => _lastResponse.Value = _petApi.DeletePetById(petId);
 
@@ -148,18 +111,12 @@ public class PetSteps : BaseStep
 
     #region Pet response checks
 
-    // Checks the listed fields only - use it where the expected values are the point of the scenario.
-    // Special values in the Value column: 'null' = field is absent/null, '[]' = empty list,
-    // '{valid-number}' = Id is present with any value.
-    // Tags are written as on creation: 'id:name' for a tag with an id, 'name' without one.
-    // Recommended for Id: check the exact value - '{run_id_int}12345' - when the scenario set the Id;
-    // '{valid-number}' when the backend generated it (then compare the read-back with 'match the created pet').
+    // Checks the listed fields only. 'null' = absent, '[]' = empty list, '{valid-number}' = any Id, tags as 'id:name'.
     [Then(@"^the response should have '(\d+)' status code and contain the following values$")]
     public void ThenTheResponseShouldContainTheFollowingValues(int statusCode, Table table)
     {
         var pet = ReadPet(statusCode);
 
-        // All mismatching fields are reported together, not just the first one.
         using var scope = new AssertionScope();
         foreach (var row in table.Rows)
         {
@@ -179,14 +136,11 @@ public class PetSteps : BaseStep
         }
     }
 
-    // Whole-object check: the returned pet must equal the created pet (as the POST returned it) in every
-    // field, including ids of the category and tags, in the same list order. Use it for read-backs: it proves
-    // that what was stored is what was created, without repeating the expected values table.
+    // The whole pet must equal the created one, as the POST returned it.
     [Then(@"^the response should have '(\d+)' status code and match the created pet named '([^']+)'$")]
     public void ThenTheResponseShouldMatchTheCreatedPetNamed(int statusCode, string name) =>
         AssertMatches(statusCode, _createdPets.Named(ReplaceVariables(name)));
 
-    // As above, for the last created pet.
     [Then(@"^the response should have '(\d+)' status code and match the last created pet$")]
     public void ThenTheResponseShouldMatchTheLastCreatedPet(int statusCode) =>
         AssertMatches(statusCode, _createdPets.Last);
@@ -198,7 +152,6 @@ public class PetSteps : BaseStep
     private void AssertMatches(int statusCode, PetDto expected) =>
         ReadPet(statusCode).Should().BeEquivalentTo(expected, options => options.WithStrictOrdering());
 
-    // Asserts the status code, then returns the body as a pet.
     private PetDto ReadPet(int statusCode)
     {
         var response = _lastResponse.Value;
@@ -211,7 +164,7 @@ public class PetSteps : BaseStep
     private static List<string> ExpectedList(string? value) =>
         value == "[]" ? new List<string>() : value.SplitBySpecSymbol();
 
-    // Same notation as the Tag rows on creation: { Id = 1, Name = "friendly" } -> "1:friendly".
+    // { Id = 1, Name = "friendly" } -> "1:friendly"
     private static string? FormatTag(Tag tag) => tag.Id == null ? tag.Name : $"{tag.Id}:{tag.Name}";
 
     #endregion

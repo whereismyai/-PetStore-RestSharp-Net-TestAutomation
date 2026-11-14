@@ -20,23 +20,21 @@ the status code, clean up after themselves on a shared public server, and docume
 ```bash
 git clone https://github.com/whereismyai/-PetStore-RestSharp-Net-TestAutomation.git
 cd ./-PetStore-RestSharp-Net-TestAutomation
+cp .env.example .env        # BASE_URL=https://petstore.swagger.io/v2, BUGS_REPO_PATH=bugs
 dotnet test                 # restores, builds both projects and runs all scenarios
 ```
 
-Settings are read with Microsoft.Extensions.Configuration from `appsettings.json` at the repository root
-(committed with working defaults, so no setup step is needed). Each source overrides the one before:
-`appsettings.json` -> `appsettings.local.json` (optional, gitignored, for local changes) -> environment
-variables (for CI).
-
-| Key | Meaning |
+| `.env` key | Meaning |
 |---|---|
-| `BASE_URL` | API under test (required; default `https://petstore.swagger.io/v2`) |
-| `BUGS_REPO_PATH` | local bug repository folder, relative to the `appsettings.json` folder (default `bugs`). Optional: without it, or if the folder is missing, bug-linked scenarios run instead of being skipped, and a warning is logged |
+| `BASE_URL` | API under test (required) |
+| `BUGS_REPO_PATH` | local bug repository folder, relative to the `.env` folder (`bugs`). Optional: without it, bug-linked scenarios run instead of being skipped, and a warning is logged |
+
+A real environment variable with the same name overrides the file (useful in CI).
 
 ```bash
 dotnet test --filter "TestCategory!~bug"   # leave out every bug-linked scenario
 dotnet test --filter "TestCategory~bug"    # only bug-linked scenarios
-dotnet test --filter "Name~Deleting"       # scenarios by (part of) their name
+dotnet test --filter "Name~Deleted"        # scenarios by (part of) their name
 dotnet test --logger "trx"                 # TRX report with each scenario's log lines
 ```
 
@@ -51,17 +49,16 @@ dotnet test --logger "trx"                 # TRX report with each scenario's log
 WhereIsMyAi.RestSharpBase.Core/
   Http/RestApiClient.cs        abstract RestSharp wrapper (Get / Post / Put / Delete), logs every request
   Logger/InternalLogger.cs     console logger that writes on the test's own thread
-  Helpers/                     Settings (appsettings.json + env vars), JsonHelper, StringExtensions, VariableReplacer
+  Helpers/                     EnvFile (.env settings), JsonHelper, StringExtensions, VariableReplacer
   Tms/                         Bug, BugRepository (bugs/*.md), BugGate (skip decision)
 WhereIsMyAi.PetStore.TestAutomation/
-  Api/                         PetStoreConfig, Clients/PetApiClient, DTOs/PetDto, DTOs/ApiResponseDto
+  Api/                         PetStoreConfig, Clients/PetApiClient, DTOs/PetDto
   RuntimeVariables/            per-scenario state: CreatedPets, LastResponse, RunIdInt
   Steps/                       BaseStep, CommonSteps, PetSteps (regions: creation, retrieval, deletion, checks)
   Hooks/                       BugHooks, RunIdIntHooks (before scenario), CleanupHooks (after scenario)
   Utils/VariableRepository.cs  scenario variables: {run_id_int}
   Tests/Features/              PetStore_Pet.feature
 bugs/                          local bug repository: one BUG-xxx.md per bug
-appsettings.json               settings (BASE_URL, BUGS_REPO_PATH)
 ```
 
 Dependencies point one way only: `Tests -> Api -> Core`.
@@ -77,14 +74,13 @@ Dependencies point one way only: `Tests -> Api -> Core`.
 - **Clean up always.** Every pet a scenario creates is recorded; `CleanupHooks` deletes all of them after
   the scenario, whether it passed or failed.
 - **Readable steps.** Step text names the HTTP method and URL. A pet is addressed by ID, by name or as the last
-  created pet. `Given` is for preconditions and fails right away; `When` is for the action under test.
+  created pet.
+- **Deletion inside the main scenarios.** Delete checks are added to scenarios that already create pets (their
+  names say so), so no extra pets are created just to delete them.
 - **Known bugs live next to the tests.** A scenario that documents an API bug asserts the *expected*
   behaviour and carries one tag, `@bug:<id>`. Before it starts, `BugHooks` reads `bugs/<id>.md`: while the bug
   is `Open` the scenario is skipped with the bug's title as the reason. Set `Status: Fixed` and it runs again,
-  with no code change. Skipped rather than run as a known failure on purpose: on a shared server a buggy
-  scenario has side effects (BUG-002 overwrites, and cleanup deletes, whatever pet holds the shared Id).
-  To find out whether a bug got fixed, run only the bug scenarios with the gate off -
-  `BUGS_REPO_PATH=none dotnet test --filter "TestCategory~bug"` - a scenario that passes means its bug can be closed.
+  with no code change. To check for fixes: `BUGS_REPO_PATH=none dotnet test --filter "TestCategory~bug"`.
 - **One log per scenario.** Each request is logged as `METHOD resource -> status` on the test's own thread,
   so every scenario's report contains exactly its own requests and warnings.
 
@@ -92,17 +88,18 @@ Dependencies point one way only: `Tests -> Api -> Core`.
 
 | Endpoint | Case | Scenario | Result |
 |---|---|---|---|
-| `POST /pet` | All fields (Id, name, status, category, 2 photo URLs, 3 tags) stored as sent | A pet can be created with all fields and is stored | Pass |
-| `POST /pet` | Every status value: `available`, `pending`, `sold` | A pet can be created with each status value | Pass (3) |
-| `POST /pet` | Tags and photo URLs reused by two pets without affecting each other | Tags and photo URLs can be reused by several pets | Pass |
+| `POST /pet` | All fields (Id, name, status, category, 2 photo URLs, 3 tags) stored as sent | A pet can be created with all fields and deleted | Pass |
+| `POST /pet` | Every status value: `available`, `pending`, `sold` | A pet can be created and deleted with each status value | Pass (3) |
+| `POST /pet` | Tags and photo URLs reused by two pets without affecting each other | Tags and photo URLs can be reused by several pets and stay after one pet is deleted | Pass |
 | `POST /pet` | No Id -> a distinct generated Id per pet | Pets created without an ID get their own generated IDs | Skipped: [BUG-002](bugs/BUG-002.md) |
 | `POST /pet` | Existing Id -> rejected, existing pet kept | Creating a pet with an existing ID is rejected and the existing pet is kept | Skipped: [BUG-001](bugs/BUG-001.md) |
 | `POST /pet` | Missing `name`, unknown `status` -> `405`, nothing stored | An invalid pet is rejected and nothing is stored | Skipped (2): [BUG-003](bugs/BUG-003.md) |
 | `GET /pet/{id}` | Existing pet returned unchanged | covered by every POST scenario | Pass |
-| `GET /pet/{id}` | Id that does not exist (created, then deleted) -> `404 Pet not found` | Getting a pet that does not exist returns 404 | Pass |
+| `GET /pet/{id}` | Deleted pet -> `404 Pet not found` | A pet can be created and deleted with each status value | Pass (3) |
 | `GET /pet/{id}` | Non-numeric Id -> `400 Invalid ID supplied` | Getting a pet by a non-numeric ID is rejected as an invalid ID | Skipped: [BUG-004](bugs/BUG-004.md) |
-| `DELETE /pet/{id}` | Removes only the requested pet (`200`, Id as message; other pet untouched) | Deleting a pet removes only that pet, and deleting it again returns 404 | Pass |
-| `DELETE /pet/{id}` | Already deleted -> `404`, empty body | (same scenario) | Pass |
+| `DELETE /pet/{id}` | Existing pet -> `200`, Id as message | A pet can be created and deleted with each status value | Pass (3) |
+| `DELETE /pet/{id}` | Already deleted -> `404`, empty body | A pet can be created with all fields and deleted | Pass |
+| `DELETE /pet/{id}` | Deleting one pet keeps the shared tag and photo URL on another | Tags and photo URLs can be reused by several pets and stay after one pet is deleted | Pass |
 
 Not automated on purpose: `DELETE` with/without the optional `api_key` header, and malformed JSON bodies
 (they would need a raw-body client method).
@@ -113,7 +110,7 @@ Run on 2026-11-15 against `https://petstore.swagger.io/v2`:
 
 | Total | Passed | Failed | Skipped (open bug) | Duration |
 |---|---|---|---|---|
-| 12 | 7 | 0 | 5 | ~10 s |
+| 10 | 5 | 0 | 5 | ~10 s |
 
 All 5 skipped scenarios were also run on purpose (with `BUGS_REPO_PATH` pointing to a missing folder). Each
 failed exactly as its bug describes:

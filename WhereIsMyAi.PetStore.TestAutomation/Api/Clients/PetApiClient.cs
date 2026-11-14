@@ -13,7 +13,7 @@ public class PetApiClient : RestApiClient
 
     public RestResponse CreatePet(PetDto pet) => Post("/pet", pet);
 
-    // IDs are strings, not longs: a test client must be able to send invalid IDs (e.g. "abc") too.
+    // String IDs, so tests can send invalid ones ("abc").
     public RestResponse GetPetById(string petId) => Get($"/pet/{petId}");
 
     public RestResponse DeletePetById(string petId) => Delete($"/pet/{petId}");

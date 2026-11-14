@@ -1,8 +1,6 @@
 using FluentAssertions;
-using WhereIsMyAi.PetStore.TestAutomation.Api.DTOs;
 using WhereIsMyAi.PetStore.TestAutomation.RuntimeVariables;
 using WhereIsMyAi.PetStore.TestAutomation.Utils;
-using WhereIsMyAi.RestSharpBase.Core.Helpers;
 using Reqnroll;
 using RestSharp;
 
@@ -21,18 +19,13 @@ public class CommonSteps(LastResponse lastResponse, VariableRepository variables
         ((int)Response.StatusCode).Should().Be(expectedStatus, "response body: {0}", Response.Content);
     }
 
-    // Checks the "message" field of the API's generic reply, e.g. {"code":1,"type":"error","message":"Pet not found"}.
-    // The body is deserialized, so the whole message must be equal - a partial value does not match.
-    // Recommended: when the expected message contains an Id, write it as on creation - '{run_id_int}12345'.
+    // The whole "message":"<expected>" pair must be in the body, e.g. {"code":1,"type":"error","message":"Pet not found"}.
     [Then(@"^the response message should be '(.*)'$")]
     public void ThenTheResponseMessageShouldBe(string expectedMessage)
     {
-        var reply = Response.Content<ApiResponseDto>();
-        reply.Should().NotBeNull("a reply with a message was expected, response body: {0}", Response.Content);
-        reply!.Message.Should().Be(ReplaceVariables(expectedMessage), "response body: {0}", Response.Content);
+        Response.Content.Should().Contain($"\"message\":\"{ReplaceVariables(expectedMessage)}\"");
     }
 
-    // For replies that carry no message at all, e.g. DELETE of a pet that does not exist.
     [Then(@"^the response body should be empty$")]
     public void ThenTheResponseBodyShouldBeEmpty()
     {
