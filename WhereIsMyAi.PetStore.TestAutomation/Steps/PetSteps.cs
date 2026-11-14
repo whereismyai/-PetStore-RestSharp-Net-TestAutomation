@@ -7,6 +7,7 @@ using WhereIsMyAi.PetStore.TestAutomation.Api.Clients;
 using WhereIsMyAi.PetStore.TestAutomation.Api.DTOs;
 using WhereIsMyAi.PetStore.TestAutomation.Api.DTOs.RuntimeVariables;
 using WhereIsMyAi.RestSharpBase.Core.Helpers;
+using WhereIsMyAi.PetStore.TestAutomation.Utils;
 using Reqnroll;
 using RestSharp;
 
@@ -16,13 +17,14 @@ namespace WhereIsMyAi.PetStore.TestAutomation.Steps;
 /// Pet steps, one region per action: creation, retrieval, deletion, and the checks of a pet response.
 /// </summary>
 [Binding]
-public class PetSteps
+public class PetSteps : BaseStep
 {
     private readonly PetApiClient _petApi;
     private readonly CreatedPets _createdPets;
     private readonly LastResponse _lastResponse;
 
-    public PetSteps(PetApiClient petApi, CreatedPets createdPets, LastResponse lastResponse)
+    public PetSteps(PetApiClient petApi, CreatedPets createdPets, LastResponse lastResponse, VariableRepository variables)
+        : base(variables)
     {
         _petApi = petApi;
         _createdPets = createdPets;
@@ -34,6 +36,8 @@ public class PetSteps
     // The action under test: the response is checked by the next Then step.
     // Repeated "PhotoUrl" / "Tag" rows accumulate into lists, so one table shape covers all cases.
     // A 'null' value leaves the field out (e.g. | Name | null | for a pet without the required name).
+    // Recommended: give an explicit Id the {run_id_int} prefix - | Id | {run_id_int}12345 | - so a rerun never
+    // collides with a pet left behind by an earlier run. Leave Id out to let the backend generate it.
     [When(@"^pet is created with the following values via POST /pet$")]
     public void WhenPetIsCreated(Table table) => CreatePet(table);
 
@@ -50,13 +54,13 @@ public class PetSteps
         return response;
     }
 
-    private static PetDto BuildPet(Table table)
+    private PetDto BuildPet(Table table)
     {
         var pet = new PetDto();
 
         foreach (var row in table.Rows)
         {
-            var value = row["Value"];
+            var value = ReplaceVariables(row["Value"]);
             if (value == "null")
                 continue;
 
@@ -88,8 +92,9 @@ public class PetSteps
 
     #region Pet retrieval - GET /pet/{id}
 
+    // Recommended ID: the one used on creation - '{run_id_int}12345' for an explicit Id.
     [When(@"^the pet with ID '([^']+)' is retrieved via GET /pet/\{id\}$")]
-    public void WhenThePetWithIdIsRetrieved(string petId) => GetPet(long.Parse(petId));
+    public void WhenThePetWithIdIsRetrieved(string petId) => GetPet(long.Parse(ReplaceVariables(petId)));
 
     private void GetPet(long petId) => _lastResponse.Value = _petApi.GetPetById(petId);
 
@@ -97,8 +102,9 @@ public class PetSteps
 
     #region Pet deletion - DELETE /pet/{id}
 
+    // Recommended ID: as for GET - '{run_id_int}12345'.
     [When(@"^the pet with ID '([^']+)' is deleted via DELETE /pet/\{id\}$")]
-    public void WhenThePetWithIdIsDeleted(string petId) => DeletePet(long.Parse(petId));
+    public void WhenThePetWithIdIsDeleted(string petId) => DeletePet(long.Parse(ReplaceVariables(petId)));
 
     private void DeletePet(long petId) => _lastResponse.Value = _petApi.DeletePetById(petId);
 
@@ -109,6 +115,7 @@ public class PetSteps
     // Checks the listed fields only - use it where the expected values are the point of the scenario.
     // Special values in the Value column: 'null' = field is absent/null, '[]' = empty list.
     // Tags are written as on creation: 'id:name' for a tag with an id, 'name' without one.
+    // Recommended for Id: always check the exact value - '{run_id_int}12345' when the scenario set the Id.
     [Then(@"^the response should have '(\d+)' status code and contain the following values$")]
     public void ThenTheResponseShouldContainTheFollowingValues(int statusCode, Table table)
     {
@@ -118,7 +125,7 @@ public class PetSteps
         using var scope = new AssertionScope();
         foreach (var row in table.Rows)
         {
-            var expected = row["Value"] == "null" ? null : row["Value"];
+            var expected = row["Value"] == "null" ? null : ReplaceVariables(row["Value"]);
 
             switch (row["Field"].ToLowerInvariant())
             {
