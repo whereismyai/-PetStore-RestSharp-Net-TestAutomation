@@ -55,7 +55,7 @@ WhereIsMyAi.PetStore.TestAutomation/
   Api/                         PetStoreConfig, Clients/PetApiClient, DTOs/PetDto, DTOs/RuntimeVariables
   Steps/                       BaseStep, CommonSteps, PetSteps (regions: creation, retrieval, deletion, checks)
   Hooks/                       BugHooks, RunIdIntHooks (before scenario), CleanupHooks (after scenario)
-  Utils/VariableRepository.cs  scenario variables: {run_id_int}, {created-id}, {created-id:N}
+  Utils/VariableRepository.cs  scenario variables: {run_id_int}
   Tests/Features/              PetStore_Pet.feature
 bugs/                          local bug repository: one BUG-xxx.md per bug
 ```
@@ -117,6 +117,12 @@ failed exactly as its bug describes:
 | [BUG-002](bugs/BUG-002.md) | a distinct generated Id per pet | every pet gets `9223372036854775807` and overwrites the previous one |
 | [BUG-003](bugs/BUG-003.md) | `405 Invalid input`, nothing stored | `200`, a pet without `name` or with `status: flying` is stored |
 | [BUG-004](bugs/BUG-004.md) | `400 Invalid ID supplied` | `404` with `java.lang.NumberFormatException ...` as the message |
+
+## AI assistance
+
+`WhereIsMyAi.RestSharpBase.Core` started from my own RestSharp template. The rest was built with the help of
+an AI coding assistant (Claude Code) - code, scenarios and documentation - under my direction and review.
+Every scenario and every bug report was run and verified against the live API.
 
 ## Future to-dos
 

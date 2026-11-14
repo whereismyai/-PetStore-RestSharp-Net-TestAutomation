@@ -103,10 +103,9 @@ public class PetSteps : BaseStep
 
     #region Pet retrieval - GET /pet/{id}
 
-    // Recommended ID: the one used on creation - '{run_id_int}12345' for an explicit Id,
-    // '{created-id:1}' (1st pet of the scenario, 2 = 2nd, ...) for a backend-generated one.
-    // Sent as written, so an invalid ID ('abc') can be tested too.
-    // Use it for pets the scenario did not create (a pet that never existed, a rejected one).
+    // Recommended ID: the one used on creation - '{run_id_int}12345'. Sent as written, so an invalid ID ('abc')
+    // can be tested too. Use it for pets the scenario did not create (a rejected one, an invalid ID);
+    // a pet the scenario created is addressed by name or as the last created pet.
     [When(@"^the pet with ID '([^']+)' is retrieved via GET /pet/\{id\}$")]
     public void WhenThePetWithIdIsRetrieved(string petId) => GetPet(ReplaceVariables(petId));
 
@@ -123,7 +122,7 @@ public class PetSteps : BaseStep
 
     #region Pet deletion - DELETE /pet/{id}
 
-    // Recommended ID: as for GET - '{run_id_int}12345' (explicit Id) or '{created-id:N}' (generated Id).
+    // Recommended ID: as for GET - '{run_id_int}12345'.
     [When(@"^the pet with ID '([^']+)' is deleted via DELETE /pet/\{id\}$")]
     public void WhenThePetWithIdIsDeleted(string petId) => DeletePet(long.Parse(ReplaceVariables(petId)));
 
@@ -144,8 +143,8 @@ public class PetSteps : BaseStep
     // Special values in the Value column: 'null' = field is absent/null, '[]' = empty list,
     // '{valid-number}' = Id is present with any value.
     // Tags are written as on creation: 'id:name' for a tag with an id, 'name' without one.
-    // Recommended for Id: always check the exact value - '{run_id_int}12345' when the scenario set the Id,
-    // '{created-id:N}' (N-th pet created in the scenario) when the backend generated it.
+    // Recommended for Id: check the exact value - '{run_id_int}12345' - when the scenario set the Id;
+    // '{valid-number}' when the backend generated it (then compare the read-back with 'match the created pet').
     [Then(@"^the response should have '(\d+)' status code and contain the following values$")]
     public void ThenTheResponseShouldContainTheFollowingValues(int statusCode, Table table)
     {

@@ -37,14 +37,4 @@ public class CreatedPets
                 ? $"No pet named '{name}' has been created in this scenario."
                 : $"{pets.Count} pets named '{name}' were created in this scenario - give each pet a unique name.");
     }
-
-    /// <summary>The N-th pet created in this scenario, 1-based (1 = first).</summary>
-    public PetDto Nth(int number) =>
-        number >= 1 && number <= Value.Count
-            ? Value[number - 1]
-            : throw new InvalidOperationException(
-                $"Pet #{number} has not been created in this scenario (created so far: {Value.Count}).");
-
-    /// <summary>Id of the N-th pet created in this scenario, 1-based (1 = first).</summary>
-    public long IdOf(int number) => Nth(number).Id!.Value;
 }

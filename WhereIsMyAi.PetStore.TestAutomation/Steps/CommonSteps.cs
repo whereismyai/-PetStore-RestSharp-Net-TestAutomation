@@ -21,8 +21,7 @@ public class CommonSteps(LastResponse lastResponse, VariableRepository variables
 
     // Checks the "message" field of the API's generic reply, e.g. {"code":1,"type":"error","message":"Pet not found"},
     // straight on the raw body: the whole "message":"<expected>" pair must be present, so a partial value does not match.
-    // Recommended: when the expected message contains an Id, write it as on creation -
-    // '{run_id_int}12345' for an explicit Id, '{created-id:N}' for a backend-generated one.
+    // Recommended: when the expected message contains an Id, write it as on creation - '{run_id_int}12345'.
     [Then(@"^the response message should be '(.*)'$")]
     public void ThenTheResponseMessageShouldBe(string expectedMessage)
     {
