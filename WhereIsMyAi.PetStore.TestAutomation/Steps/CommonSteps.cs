@@ -28,4 +28,11 @@ public class CommonSteps(LastResponse lastResponse, VariableRepository variables
     {
         Response.Content.Should().Contain($"\"message\":\"{ReplaceVariables(expectedMessage)}\"");
     }
+
+    // For replies that carry no message at all, e.g. DELETE of a pet that does not exist.
+    [Then(@"^the response body should be empty$")]
+    public void ThenTheResponseBodyShouldBeEmpty()
+    {
+        Response.Content.Should().BeNullOrEmpty();
+    }
 }
