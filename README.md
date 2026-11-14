@@ -77,7 +77,10 @@ Dependencies point one way only: `Tests -> Api -> Core`.
 - **Known bugs live next to the tests.** A scenario that documents an API bug asserts the *expected*
   behaviour and carries one tag, `@bug:<id>`. Before it starts, `BugHooks` reads `bugs/<id>.md`: while the bug
   is `Open` the scenario is skipped with the bug's title as the reason. Set `Status: Fixed` and it runs again,
-  with no code change.
+  with no code change. Skipped rather than run as a known failure on purpose: on a shared server a buggy
+  scenario has side effects (BUG-002 overwrites, and cleanup deletes, whatever pet holds the shared Id).
+  To find out whether a bug got fixed, run only the bug scenarios with the gate off -
+  `BUGS_REPO_PATH=none dotnet test --filter "TestCategory~bug"` - a scenario that passes means its bug can be closed.
 - **One log per scenario.** Each request is logged as `METHOD resource -> status` on the test's own thread,
   so every scenario's report contains exactly its own requests and warnings.
 
@@ -86,13 +89,13 @@ Dependencies point one way only: `Tests -> Api -> Core`.
 | Endpoint | Case | Scenario | Result |
 |---|---|---|---|
 | `POST /pet` | All fields (Id, name, status, category, 2 photo URLs, 3 tags) stored as sent | A pet can be created with all fields and is stored | Pass |
-| `POST /pet` | Every status value: `available`, `pending`, `sold` (each also deleted) | A pet can be created and deleted with each status value | Pass (3) |
+| `POST /pet` | Every status value: `available`, `pending`, `sold` | A pet can be created with each status value | Pass (3) |
 | `POST /pet` | Tags and photo URLs reused by two pets without affecting each other | Tags and photo URLs can be reused by several pets | Pass |
 | `POST /pet` | No Id -> a distinct generated Id per pet | Pets created without an ID get their own generated IDs | Skipped: [BUG-002](bugs/BUG-002.md) |
 | `POST /pet` | Existing Id -> rejected, existing pet kept | Creating a pet with an existing ID is rejected and the existing pet is kept | Skipped: [BUG-001](bugs/BUG-001.md) |
 | `POST /pet` | Missing `name`, unknown `status` -> `405`, nothing stored | An invalid pet is rejected and nothing is stored | Skipped (2): [BUG-003](bugs/BUG-003.md) |
 | `GET /pet/{id}` | Existing pet returned unchanged | covered by every POST scenario | Pass |
-| `GET /pet/{id}` | Unknown Id -> `404 Pet not found` | Getting a pet that does not exist returns 404 | Pass |
+| `GET /pet/{id}` | Id that does not exist (created, then deleted) -> `404 Pet not found` | Getting a pet that does not exist returns 404 | Pass |
 | `GET /pet/{id}` | Non-numeric Id -> `400 Invalid ID supplied` | Getting a pet by a non-numeric ID is rejected as an invalid ID | Skipped: [BUG-004](bugs/BUG-004.md) |
 | `DELETE /pet/{id}` | Removes only the requested pet (`200`, Id as message; other pet untouched) | Deleting a pet removes only that pet, and deleting it again returns 404 | Pass |
 | `DELETE /pet/{id}` | Already deleted -> `404`, empty body | (same scenario) | Pass |

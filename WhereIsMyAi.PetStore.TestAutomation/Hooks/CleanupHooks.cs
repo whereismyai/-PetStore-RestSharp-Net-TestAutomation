@@ -30,7 +30,7 @@ public class CleanupHooks
         {
             try
             {
-                var response = _petApi.DeletePetById(pet.Id!.Value);
+                var response = _petApi.DeletePetById(pet.Id!.Value.ToString());
                 if (!response.IsSuccessful && response.StatusCode != HttpStatusCode.NotFound)
                 {
                     throw new Exception($"status code {(int)response.StatusCode}");

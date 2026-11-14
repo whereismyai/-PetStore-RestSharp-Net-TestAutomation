@@ -28,9 +28,9 @@ Rule: POST /pet stores the pet exactly as it was sent
         When the created pet named 'Baily' is retrieved via GET /pet/{id}
         Then the response should have '200' status code and match the created pet named 'Baily'
 
-    # One example per value of the status enum (available / pending / sold). Each pet is then deleted,
-    # so deletion is covered for every status too.
-    Scenario Outline: A pet can be created and deleted with each status value
+    # One example per value of the status enum (available / pending / sold). Deletion does not depend on
+    # the status, so it is covered once, in the DELETE rule.
+    Scenario Outline: A pet can be created with each status value
         When pet is created with the following values via POST /pet
             | Field  | Value            |
             | Id     | {run_id_int}<id> |
@@ -42,12 +42,6 @@ Rule: POST /pet stores the pet exactly as it was sent
             | Status | <status>         |
         When the last created pet is retrieved via GET /pet/{id}
         Then the response should have '200' status code and match the last created pet
-        When the last created pet is deleted via DELETE /pet/{id}
-        Then the response status should be '200'
-        And the response message should be '{run_id_int}<id>'
-        When the last created pet is retrieved via GET /pet/{id}
-        Then the response status should be '404'
-        And the response message should be 'Pet not found'
 
         Examples:
             | status    | id    |
@@ -152,9 +146,15 @@ Rule: POST /pet stores the pet exactly as it was sent
 Rule: GET /pet/{id} returns the stored pet or a clear error
     The found case is checked by every POST scenario: each created pet is read back and must match.
 
-    # An Id that was never created. The server is shared, so {run_id_int} keeps a collision unlikely.
+    # The pet is created and deleted first, so its Id is known not to exist (a guessed Id could belong to
+    # anyone on the shared server).
     Scenario: Getting a pet that does not exist returns 404
-        When the pet with ID '{run_id_int}99999' is retrieved via GET /pet/{id}
+        Given pet is created with the following values via POST /pet
+            | Field | Value             |
+            | Id    | {run_id_int}99999 |
+            | Name  | Ghost             |
+        And the last created pet is deleted via DELETE /pet/{id}
+        When the last created pet is retrieved via GET /pet/{id}
         Then the response status should be '404'
         And the response message should be 'Pet not found'
 

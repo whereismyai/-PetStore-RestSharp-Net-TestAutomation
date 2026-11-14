@@ -124,16 +124,25 @@ public class PetSteps : BaseStep
 
     // Recommended ID: as for GET - '{run_id_int}12345'.
     [When(@"^the pet with ID '([^']+)' is deleted via DELETE /pet/\{id\}$")]
-    public void WhenThePetWithIdIsDeleted(string petId) => DeletePet(long.Parse(ReplaceVariables(petId)));
+    public void WhenThePetWithIdIsDeleted(string petId) => DeletePet(ReplaceVariables(petId));
 
     // A pet created earlier in this scenario, by its name (the name must be unique within the scenario).
     [When(@"^the created pet named '([^']+)' is deleted via DELETE /pet/\{id\}$")]
-    public void WhenTheCreatedPetNamedIsDeleted(string name) => DeletePet(_createdPets.Named(ReplaceVariables(name)).Id!.Value);
+    public void WhenTheCreatedPetNamedIsDeleted(string name) => DeletePet(_createdPets.Named(ReplaceVariables(name)).Id!.Value.ToString());
 
     [When(@"^the last created pet is deleted via DELETE /pet/\{id\}$")]
-    public void WhenTheLastCreatedPetIsDeleted() => DeletePet(_createdPets.LastId);
+    public void WhenTheLastCreatedPetIsDeleted() => DeletePet(_createdPets.LastId.ToString());
 
-    private void DeletePet(long petId) => _lastResponse.Value = _petApi.DeletePetById(petId);
+    // A precondition (e.g. "a pet that no longer exists"): fails right away if the DELETE is not successful.
+    [Given(@"^the last created pet is deleted via DELETE /pet/\{id\}$")]
+    public void GivenTheLastCreatedPetIsDeleted()
+    {
+        WhenTheLastCreatedPetIsDeleted();
+        _lastResponse.Value.IsSuccessful.Should().BeTrue("the precondition DELETE /pet/{{id}} must succeed, response: {0}",
+            _lastResponse.Value.Content);
+    }
+
+    private void DeletePet(string petId) => _lastResponse.Value = _petApi.DeletePetById(petId);
 
     #endregion
 
