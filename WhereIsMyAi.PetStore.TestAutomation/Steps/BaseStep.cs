@@ -17,7 +17,7 @@ public abstract class BaseStep
 
     /// <summary>
     /// Call on every string value that comes from the scenario before it is used in a request or an
-    /// assertion: replaces variable placeholders ({run_id_int}, ...) with their values.
+    /// assertion: replaces variable placeholders ({run_id_int}, {created-id:N}, ...) with their values.
     /// </summary>
     protected string ReplaceVariables(string value) => _variables.Replace(value);
 }

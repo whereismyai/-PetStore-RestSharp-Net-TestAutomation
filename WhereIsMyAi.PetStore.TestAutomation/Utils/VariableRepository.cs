@@ -14,12 +14,18 @@ public class VariableRepository
 {
     private readonly IReadOnlyDictionary<string, Func<string?, string>> _variables;
 
-    public VariableRepository(RunIdInt runIdInt)
+    public VariableRepository(RunIdInt runIdInt, CreatedPets createdPets)
     {
         _variables = new Dictionary<string, Func<string?, string>>
         {
             // {run_id_int} - random 4-digit number generated once per scenario
             ["run_id_int"] = _ => runIdInt.Value.ToString(),
+
+            // {created-id} - Id the backend returned for the last created pet;
+            // {created-id:2} - for the 2nd pet created in the scenario (1 = first)
+            ["created-id"] = number => (number == null
+                ? createdPets.LastId
+                : createdPets.IdOf(int.Parse(number))).ToString(),
         };
     }
 
