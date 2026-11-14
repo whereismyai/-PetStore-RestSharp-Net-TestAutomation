@@ -6,5 +6,5 @@ riderModule.iml
 .idea
 *feature.cs
 *.DotSettings.user
-.env
+appsettings.local.json
 .DS_Store

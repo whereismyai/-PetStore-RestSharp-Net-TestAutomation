@@ -10,7 +10,7 @@ public static class InternalLogger
         .SetMinimumLevel(LogLevel.Information)
         .AddProvider(new SyncConsoleLoggerProvider()));
 
-    public static ILogger Logger { get; set; } = Factory.CreateLogger("RestSharpBase");
+    public static ILogger Logger { get; } = Factory.CreateLogger("RestSharpBase");
 
     // Not the built-in AddConsole: it writes from a background thread, so the test runner attaches
     // every line to the first test that logged and drops them for all later tests. Writing on the

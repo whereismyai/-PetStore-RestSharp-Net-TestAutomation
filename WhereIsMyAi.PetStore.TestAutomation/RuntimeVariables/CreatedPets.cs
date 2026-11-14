@@ -1,8 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using WhereIsMyAi.PetStore.TestAutomation.Api.DTOs;
 
-namespace WhereIsMyAi.PetStore.TestAutomation.Api.DTOs.RuntimeVariables;
+namespace WhereIsMyAi.PetStore.TestAutomation.RuntimeVariables;
 
 /// <summary>
 /// Runtime context variable: pets created by the current scenario, in creation order, as the POST response

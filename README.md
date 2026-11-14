@@ -20,16 +20,18 @@ the status code, clean up after themselves on a shared public server, and docume
 ```bash
 git clone https://github.com/whereismyai/-PetStore-RestSharp-Net-TestAutomation.git
 cd ./-PetStore-RestSharp-Net-TestAutomation
-cp .env.example .env        # BASE_URL=https://petstore.swagger.io/v2, BUGS_REPO_PATH=bugs
 dotnet test                 # restores, builds both projects and runs all scenarios
 ```
 
-| `.env` key | Meaning |
-|---|---|
-| `BASE_URL` | API under test (required) |
-| `BUGS_REPO_PATH` | local bug repository folder, relative to the `.env` folder (`bugs`). Optional: without it, bug-linked scenarios run instead of being skipped, and a warning is logged |
+Settings are read with Microsoft.Extensions.Configuration from `appsettings.json` at the repository root
+(committed with working defaults, so no setup step is needed). Each source overrides the one before:
+`appsettings.json` -> `appsettings.local.json` (optional, gitignored, for local changes) -> environment
+variables (for CI).
 
-A real environment variable with the same name overrides the file (useful in CI).
+| Key | Meaning |
+|---|---|
+| `BASE_URL` | API under test (required; default `https://petstore.swagger.io/v2`) |
+| `BUGS_REPO_PATH` | local bug repository folder, relative to the `appsettings.json` folder (default `bugs`). Optional: without it, or if the folder is missing, bug-linked scenarios run instead of being skipped, and a warning is logged |
 
 ```bash
 dotnet test --filter "TestCategory!~bug"   # leave out every bug-linked scenario
@@ -49,15 +51,17 @@ dotnet test --logger "trx"                 # TRX report with each scenario's log
 WhereIsMyAi.RestSharpBase.Core/
   Http/RestApiClient.cs        abstract RestSharp wrapper (Get / Post / Put / Delete), logs every request
   Logger/InternalLogger.cs     console logger that writes on the test's own thread
-  Helpers/                     EnvFile (.env settings), JsonHelper, StringExtensions, VariableReplacer
+  Helpers/                     Settings (appsettings.json + env vars), JsonHelper, StringExtensions, VariableReplacer
   Tms/                         Bug, BugRepository (bugs/*.md), BugGate (skip decision)
 WhereIsMyAi.PetStore.TestAutomation/
-  Api/                         PetStoreConfig, Clients/PetApiClient, DTOs/PetDto, DTOs/RuntimeVariables
+  Api/                         PetStoreConfig, Clients/PetApiClient, DTOs/PetDto, DTOs/ApiResponseDto
+  RuntimeVariables/            per-scenario state: CreatedPets, LastResponse, RunIdInt
   Steps/                       BaseStep, CommonSteps, PetSteps (regions: creation, retrieval, deletion, checks)
   Hooks/                       BugHooks, RunIdIntHooks (before scenario), CleanupHooks (after scenario)
   Utils/VariableRepository.cs  scenario variables: {run_id_int}
   Tests/Features/              PetStore_Pet.feature
 bugs/                          local bug repository: one BUG-xxx.md per bug
+appsettings.json               settings (BASE_URL, BUGS_REPO_PATH)
 ```
 
 Dependencies point one way only: `Tests -> Api -> Core`.

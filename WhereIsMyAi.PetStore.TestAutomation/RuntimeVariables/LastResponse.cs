@@ -1,7 +1,7 @@
 using System;
 using RestSharp;
 
-namespace WhereIsMyAi.PetStore.TestAutomation.Api.DTOs.RuntimeVariables;
+namespace WhereIsMyAi.PetStore.TestAutomation.RuntimeVariables;
 
 /// <summary>
 /// Runtime context variable: the response of the last request sent in the current scenario.

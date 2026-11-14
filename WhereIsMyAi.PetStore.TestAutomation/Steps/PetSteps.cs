@@ -5,7 +5,7 @@ using FluentAssertions;
 using FluentAssertions.Execution;
 using WhereIsMyAi.PetStore.TestAutomation.Api.Clients;
 using WhereIsMyAi.PetStore.TestAutomation.Api.DTOs;
-using WhereIsMyAi.PetStore.TestAutomation.Api.DTOs.RuntimeVariables;
+using WhereIsMyAi.PetStore.TestAutomation.RuntimeVariables;
 using WhereIsMyAi.RestSharpBase.Core.Helpers;
 using WhereIsMyAi.PetStore.TestAutomation.Utils;
 using Reqnroll;

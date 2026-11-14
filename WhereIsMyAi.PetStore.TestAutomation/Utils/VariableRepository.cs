@@ -1,6 +1,6 @@
 using System;
 using System.Collections.Generic;
-using WhereIsMyAi.PetStore.TestAutomation.Api.DTOs.RuntimeVariables;
+using WhereIsMyAi.PetStore.TestAutomation.RuntimeVariables;
 using WhereIsMyAi.RestSharpBase.Core.Helpers;
 
 namespace WhereIsMyAi.PetStore.TestAutomation.Utils;
