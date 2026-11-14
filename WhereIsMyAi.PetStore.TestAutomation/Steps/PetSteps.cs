@@ -19,11 +19,13 @@ namespace WhereIsMyAi.PetStore.TestAutomation.Steps;
 public class PetSteps
 {
     private readonly PetApiClient _petApi;
+    private readonly CreatedPets _createdPets;
     private readonly LastResponse _lastResponse;
 
-    public PetSteps(PetApiClient petApi, LastResponse lastResponse)
+    public PetSteps(PetApiClient petApi, CreatedPets createdPets, LastResponse lastResponse)
     {
         _petApi = petApi;
+        _createdPets = createdPets;
         _lastResponse = lastResponse;
     }
 
@@ -35,10 +37,16 @@ public class PetSteps
     [When(@"^pet is created with the following values via POST /pet$")]
     public void WhenPetIsCreated(Table table) => CreatePet(table);
 
+    // Sends the pet and remembers it (as the POST returned it) for later steps and for cleanup.
     private RestResponse CreatePet(Table table)
     {
         var response = _petApi.CreatePet(BuildPet(table));
         _lastResponse.Value = response;
+
+        var createdPet = response.IsSuccessful ? response.Content<PetDto>() : null;
+        if (createdPet?.Id != null)
+            _createdPets.Value.Add(createdPet);
+
         return response;
     }
 
