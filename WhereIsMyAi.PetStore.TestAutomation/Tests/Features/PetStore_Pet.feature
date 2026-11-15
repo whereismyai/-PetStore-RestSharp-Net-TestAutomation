@@ -74,7 +74,8 @@ Scenario Outline: A pet can be created and deleted with each status value
         | pending   | Кіт у чоботях | 20002 |
         | sold      | Smaug 🐉      | 20003 |
 
-# Boundary Ids cannot take the {run_id_int} prefix.
+# Boundary Ids cannot take the {run_id_int} prefix and can be shared with other users of the public server.
+@shared-ids
 Scenario Outline: A pet can be created and deleted with boundary values
     When pet is created with the following values via POST /pet
         | Field | Value  |

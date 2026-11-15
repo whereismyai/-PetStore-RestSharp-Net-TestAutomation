@@ -32,10 +32,11 @@ dotnet test                 # restores, builds both projects and runs all scenar
 A real environment variable with the same name overrides the file (useful in CI).
 
 ```bash
-dotnet test --filter "TestCategory!~bug"   # leave out every bug-linked scenario
-dotnet test --filter "TestCategory~bug"    # only bug-linked scenarios
-dotnet test --filter "Name~Deleted"        # scenarios by (part of) their name
-dotnet test --logger "trx"                 # TRX report with each scenario's log lines
+dotnet test --filter "TestCategory!~bug"          # leave out every bug-linked scenario
+dotnet test --filter "TestCategory~bug"           # only bug-linked scenarios
+dotnet test --filter "TestCategory!=shared-ids"   # leave out boundary Ids other users may also use
+dotnet test --filter "Name~Deleted"               # scenarios by (part of) their name
+dotnet test --logger "trx"                        # TRX report with each scenario's log lines
 ```
 
 ## Solution layout
@@ -119,7 +120,8 @@ bug is open.
 | `id` (path) | deleted pet | S1, S2 | Pass |
 | `id` (path) | non-numeric | S8 | Blocked: BUG-004 |
 | `name` | English, Ukrainian, emoji, digits and brackets | S1, S2, S4 | Pass |
-| `name` | empty, 256 characters | S3 | Pass |
+| `name` | empty string (accepted: the spec sets no minimum length) | S3 | Pass |
+| `name` | 256 characters | S3 | Pass |
 | `name` | missing (required) | S7 | Blocked: BUG-003 |
 | `status` | `available`, `pending`, `sold` | S2 | Pass |
 | `status` | not sent | S3, S4 | Pass |
@@ -132,8 +134,8 @@ bug is open.
 | `DELETE` | already deleted -> `404`, empty body | S1 | Pass |
 | `DELETE` | one of two pets sharing a tag and photo URL | S4 | Pass |
 
-Not covered: Id `0` and negative Ids (the API silently replaces them with a generated Id, see BUG-002), Ids
-beyond int64 (the client sends a `long`), the `api_key` header on `DELETE`, malformed JSON, `PUT /pet` and
+Not covered: Id `0` and negative Ids (the API replaces them with a generated Id; the spec defines no rule for
+them, so there is nothing to assert), Ids beyond int64 (the client sends a `long`), the `api_key` header on `DELETE`, malformed JSON, `PUT /pet` and
 `GET /pet/findByStatus`.
 
 ### Trade-offs
@@ -147,7 +149,7 @@ beyond int64 (the client sends a `long`), the `api_key` header on `DELETE`, malf
 - `{run_id_int}` makes Id collisions on the public server unlikely, not impossible; there are no retries.
 - A pet addressed by name in a step cannot have an apostrophe in its name.
 - Boundary Ids (`1`, int64 maximum - 1) cannot take the `{run_id_int}` prefix, so they can collide with other
-  users' pets on the public server.
+  users' pets on the public server. The outline is tagged `@shared-ids` to leave it out of unstable runs.
 
 ## Test report
 
