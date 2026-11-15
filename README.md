@@ -18,8 +18,8 @@ the status code, clean up after themselves on a shared public server, and docume
 ## Setup and run
 
 ```bash
-git clone https://github.com/whereismyai/-PetStore-RestSharp-Net-TestAutomation.git
-cd ./-PetStore-RestSharp-Net-TestAutomation
+git clone https://github.com/whereismyai/PetStore-RestSharp-Net-TestAutomation.git
+cd ./PetStore-RestSharp-Net-TestAutomation
 cp .env.example .env        # BASE_URL=https://petstore.swagger.io/v2, BUGS_REPO_PATH=Bugs
 dotnet test                 # restores, builds the solution, runs the Core unit tests and all scenarios
 ```
@@ -45,7 +45,7 @@ dotnet test --logger "trx"                        # TRX report with each scenari
 |---|---|
 | `WhereIsMyAi.RestSharpBase.Core` | Project-agnostic base: RestSharp client wrapper, logger, helpers and a small local TMS. It knows nothing about PetStore or any test framework, so other API test projects can reuse it. |
 | `WhereIsMyAi.PetStore.TestAutomation` | Everything PetStore-specific: API client, DTOs, step definitions, hooks, scenario variables, feature files. References Core. |
-| `WhereIsMyAi.RestSharpBase.Core.Tests` | Unit tests for Core: request building, transport failure, malformed JSON, `.env` precedence, bug-gate decisions. Fake HTTP handler, no network. |
+| `WhereIsMyAi.RestSharpBase.Core.Tests` | Unit tests for Core: request building, transport failure, malformed JSON, `.env` precedence, bug-gate decisions. Fake HTTP handler, no network. A smoke check made entirely with AI assistance, outside the 2-hour scope (see [AI assistance](#ai-assistance)). |
 
 ```
 WhereIsMyAi.RestSharpBase.Core/
@@ -223,6 +223,10 @@ again with no code change, and it passes.
 `WhereIsMyAi.RestSharpBase.Core` started from my own RestSharp template. The rest was built with the help of
 an AI coding assistant (Claude Code) - code, scenarios and documentation - under my direction and review.
 Every scenario and every bug report was run and verified against the live API.
+
+The Core unit tests (`WhereIsMyAi.RestSharpBase.Core.Tests`) go beyond the 2-hour task: they were created
+entirely with AI assistance, only as a smoke check of the reusable Core, so the required CI check runs
+something deterministic. The PetStore scenarios are the actual deliverable.
 
 ## Future to-dos
 
