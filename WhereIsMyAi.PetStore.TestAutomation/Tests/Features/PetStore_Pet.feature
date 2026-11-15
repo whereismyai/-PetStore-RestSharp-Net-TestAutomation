@@ -98,7 +98,7 @@ Scenario Outline: A pet can be created and deleted with boundary values
         | case                               | id                  | name                                                                                                                                                                                                                                                             |
         | smallest positive Id               | 1                   | Lassie                                                                                                                                                                                                                                                           |
         | largest Id below the int64 maximum | 9223372036854775806 | Salem                                                                                                                                                                                                                                                            |
-        | empty name                         | {run_id_int}50001   |                                                                                                                                                                                                                                                                  |
+        | empty name                         | {run_id_int}50001   | {empty}                                                                                                                                                                                                                                                          |
         | 256-character name                 | {run_id_int}50002   | AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA |
 
 Scenario: Tags and photo URLs can be reused by several pets and stay after one pet is deleted
@@ -143,17 +143,29 @@ Scenario: Pets created without an ID get their own generated IDs
         | Field    | Value     |
         | Name     | Toothless |
         | Category | DRAGONS   |
-    Then the response should have '200' status code
+    Then the response should have '200' status code and the returned pet should be exactly, with a generated Id
+        | Field    | Value     |
+        | Name     | Toothless |
+        | Category | 0:DRAGONS |
     When a pet is created with the following values via POST /pet
         | Field    | Value      |
         | Name     | Stormfly   |
         | Category | NIGHT_FURY |
-    Then the response should have '200' status code
+    Then the response should have '200' status code and the returned pet should be exactly, with a generated Id
+        | Field    | Value        |
+        | Name     | Stormfly     |
+        | Category | 0:NIGHT_FURY |
     And the created pets should have different IDs
     When the created pet named 'Toothless' is retrieved via GET /pet/{id}
-    Then the response should have '200' status code and the returned pet should match the created pet named 'Toothless'
+    Then the response should have '200' status code and the returned pet should be exactly, with the Id of the created pet named 'Toothless'
+        | Field    | Value     |
+        | Name     | Toothless |
+        | Category | 0:DRAGONS |
     When the created pet named 'Stormfly' is retrieved via GET /pet/{id}
-    Then the response should have '200' status code and the returned pet should match the created pet named 'Stormfly'
+    Then the response should have '200' status code and the returned pet should be exactly, with the Id of the created pet named 'Stormfly'
+        | Field    | Value        |
+        | Name     | Stormfly     |
+        | Category | 0:NIGHT_FURY |
 
 @bug:BUG-001
 Scenario: Creating a pet with an existing ID is rejected and the existing pet is kept
@@ -189,7 +201,8 @@ Scenario Outline: An invalid pet is rejected and nothing is stored
 
     Examples:
         | case                  | name | status    | id    |
-        | missing required name | null | available | 30001 |
+        | missing required name |      | available | 30001 |
+        | null required name    | null | available | 30003 |
         | status not in enum    | Rex  | flying    | 30002 |
 
 @bug:BUG-004

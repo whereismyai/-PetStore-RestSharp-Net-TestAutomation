@@ -21,7 +21,7 @@ the status code, clean up after themselves on a shared public server, and docume
 git clone https://github.com/whereismyai/-PetStore-RestSharp-Net-TestAutomation.git
 cd ./-PetStore-RestSharp-Net-TestAutomation
 cp .env.example .env        # BASE_URL=https://petstore.swagger.io/v2, BUGS_REPO_PATH=Bugs
-dotnet test                 # restores, builds both projects and runs all scenarios
+dotnet test                 # restores, builds all three projects, runs the Core unit tests and all scenarios
 ```
 
 | `.env` key | Meaning |
@@ -37,6 +37,7 @@ dotnet test --filter "TestCategory~bug"           # only bug-linked scenarios
 dotnet test --filter "TestCategory!=shared-ids"   # leave out boundary Ids other users may also use
 dotnet test --filter "Name~Deleted"               # scenarios by (part of) their name
 dotnet test --logger "trx"                        # TRX report with each scenario's log lines
+dotnet test WhereIsMyAi.RestSharpBase.Core.Tests  # only the Core unit tests (no network, ~1 s)
 ```
 
 ## Solution layout
@@ -45,14 +46,18 @@ dotnet test --logger "trx"                        # TRX report with each scenari
 |---|---|
 | `WhereIsMyAi.RestSharpBase.Core` | Project-agnostic base: RestSharp client wrapper, logger, helpers and a small local TMS. It knows nothing about PetStore or any test framework, so other API test projects can reuse it. |
 | `WhereIsMyAi.PetStore.TestAutomation` | Everything PetStore-specific: API client, DTOs, step definitions, hooks, scenario variables, feature files. References Core. |
+| `WhereIsMyAi.RestSharpBase.Core.Tests` | Deterministic unit tests for Core: request construction, transport failure, cancellation, malformed/empty JSON, `.env` vs environment-variable precedence, bug-gate decisions. A fake HTTP handler and temp folders, no network. |
 
 ```
 WhereIsMyAi.RestSharpBase.Core/
-  Http/RestApiClient.cs        abstract RestSharp wrapper (Get / Post / Put / Delete), logs every request
+  Http/RestApiClient.cs        abstract RestSharp wrapper: injectable RestClient and logger, Get / Post / Put / Delete,
+                               Execute / ExecuteAsync for custom requests; logs every request and its JSON body
   Logger/InternalLogger.cs     console logger that writes on the test's own thread
   Extensions/                  StringExtensions (ToLong)
   Helpers/                     EnvFileHelper (.env settings), JsonHelper
   Tms/                         Bug, BugRepository (Bugs/*.md), BugGate (skip decision)
+WhereIsMyAi.RestSharpBase.Core.Tests/
+  Http/ Helpers/ Tms/          unit tests per Core folder (FakeHttpHandler)
 WhereIsMyAi.PetStore.TestAutomation/
   Api/                         PetStoreConfig, Clients/PetApiClient, DTOs/PetDto
   RuntimeVariables/            per-scenario state: CreatedPets, LastResponse, RunIdInt
@@ -68,7 +73,11 @@ Dependencies point one way only: `Tests -> Api -> Core`.
 
 - **Check what is stored, not only the reply.** Every created pet is read back with `GET`. When the Id is known,
   the whole expected pet is written in the feature file and both responses must equal it exactly (all fields,
-  category and tag ids, list order). Only pets with generated Ids are compared with the pet the `POST` returned.
+  category and tag ids, list order). Pets with generated Ids are checked the same way against the table, except
+  for the Id - never against an earlier response, which could repeat a wrong value. Each pet response is also
+  checked as raw JSON: `id` is a number, `photoUrls` and `tags` are arrays, sent fields have the right JSON type.
+- **Missing, null and empty are different requests.** The request body is a `JsonObject` built from the table:
+  a blank value leaves the property out, `null` sends `null`, `{empty}` sends `""`. The JSON is logged as sent.
   Names and tags are in English, Ukrainian, Spanish and French, with emoji and special characters.
   Error replies are checked by their exact message, not only by the status code.
 - **No collisions on a shared server.** Explicit IDs are prefixed with `{run_id_int}`, a random 4-digit
@@ -108,7 +117,7 @@ bug is open.
 | S4 | Tags and photo URLs can be reused by several pets and stay after one pet is deleted | Pass |
 | S5 | Pets created without an ID get their own generated IDs | Pass ([BUG-002](Bugs/BUG-002.md) fixed) |
 | S6 | Creating a pet with an existing ID is rejected and the existing pet is kept | Blocked: [BUG-001](Bugs/BUG-001.md) |
-| S7 | An invalid pet is rejected and nothing is stored (2 examples) | Blocked: [BUG-003](Bugs/BUG-003.md) |
+| S7 | An invalid pet is rejected and nothing is stored (3 examples) | Blocked: [BUG-003](Bugs/BUG-003.md) |
 | S8 | Getting a pet by a non-numeric ID is rejected as an invalid ID | Blocked: [BUG-004](Bugs/BUG-004.md) |
 
 ### Coverage matrix
@@ -126,6 +135,7 @@ bug is open.
 | `name` | empty string (accepted: the spec sets no minimum length) | S3 | Pass |
 | `name` | 256 characters | S3 | Pass |
 | `name` | missing (required) | S7 | Blocked: BUG-003 |
+| `name` | `null` (required) | S7 | Blocked: BUG-003 |
 | `status` | `available`, `pending`, `sold` | S2 | Pass |
 | `status` | not sent | S3, S4 | Pass |
 | `status` | not in the enum | S7 | Blocked: BUG-003 |
@@ -157,8 +167,9 @@ them, so there is nothing to assert), Ids beyond int64 (the client sends a `long
 
 `.github/workflows/ci.yml` runs on every pull request into `main`:
 
-- `build` - restores and builds the solution. It is the required check: a PR that does not build cannot be merged.
-- `test` - runs `dotnet test` after a successful build, with `BASE_URL` and `BUGS_REPO_PATH` set in the workflow.
+- `build` - restores and builds the solution, then runs the Core unit tests (no network). It is the required
+  check: a PR that does not build or breaks Core cannot be merged.
+- `test` - runs the PetStore scenarios after a successful build, with `BASE_URL` and `BUGS_REPO_PATH` set in the workflow.
   Deliberately not required: the tests hit a shared public server that the PR does not control, so a red
   test run is shown on the PR but does not block the merge.
 - Skipped scenarios stay visible: each one is a warning annotation, and a grey `Skipped tests` check lists them
@@ -170,15 +181,17 @@ Run on 2026-11-15 against `https://petstore.swagger.io/v2`:
 
 | Total | Passed | Failed | Skipped (open bug) | Duration |
 |---|---|---|---|---|
-| 14 | 10 | 0 | 4 | ~10 s |
+| 15 | 10 | 0 | 5 | ~11 s |
 
-All 4 skipped scenarios were also run on purpose (with `BUGS_REPO_PATH` pointing to a missing folder). Each
+Plus 33 Core unit tests, all passing (~0.1 s).
+
+All 5 skipped scenarios were also run on purpose (with `BUGS_REPO_PATH` pointing to a missing folder). Each
 failed exactly as its bug describes:
 
 | Bug | Expected | Actual |
 |---|---|---|
 | [BUG-001](Bugs/BUG-001.md) | `409`, existing pet unchanged | `200`, the existing pet is silently overwritten |
-| [BUG-003](Bugs/BUG-003.md) | `405 Invalid input`, nothing stored | `200`, a pet without `name` or with `status: flying` is stored |
+| [BUG-003](Bugs/BUG-003.md) | `405 Invalid input`, nothing stored | `200`, a pet without `name`, with `"name": null` or with `status: flying` is stored |
 | [BUG-004](Bugs/BUG-004.md) | `400 Invalid ID supplied` | `404` with `java.lang.NumberFormatException ...` as the message |
 
 [BUG-002](Bugs/BUG-002.md) (every pet created without an Id got `9223372036854775807`) was fixed on the server

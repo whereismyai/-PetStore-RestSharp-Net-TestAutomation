@@ -1,5 +1,7 @@
 using System;
 using System.Linq;
+using System.Text.Json;
+using System.Text.Json.Nodes;
 using FluentAssertions;
 using WhereIsMyAi.PetStore.TestAutomation.Api.Clients;
 using WhereIsMyAi.PetStore.TestAutomation.Api.DTOs;
@@ -17,7 +19,8 @@ public class PetSteps(PetApiClient petApi, CreatedPets createdPets, LastResponse
 {
     #region Pet creation - POST /pet
 
-    // Repeated PhotoUrl / Tag rows build lists; Category and Tag take 'id:name' or 'name'; 'null' leaves a field out.
+    // Repeated PhotoUrl / Tag rows build lists; Category and Tag take 'id:name' or 'name'.
+    // A blank value (or no row) leaves the property out of the JSON, 'null' sends null, '{empty}' sends "".
     [When(@"^a pet is created with the following values via POST /pet$")]
     public void WhenAPetIsCreatedWithTheFollowingValuesViaPostPet(Table table)
     {
@@ -28,24 +31,27 @@ public class PetSteps(PetApiClient petApi, CreatedPets createdPets, LastResponse
             createdPets.Value.Add(response.ContentAs<PetDto>());
     }
 
-    private PetDto BuildPet(Table table)
+    private JsonObject BuildPet(Table table)
     {
-        var pet = new PetDto();
+        var pet = new JsonObject();
 
         foreach (var row in table.Rows)
         {
-            var value = ReplaceVariables(row["Value"]);
-            if (value == "null")
+            var raw = row["Value"];
+            if (string.IsNullOrWhiteSpace(raw))
                 continue;
+
+            var isNull = raw == "null";
+            var value = raw == "{empty}" ? "" : ReplaceVariables(raw);
 
             switch (row["Field"].ToLowerInvariant())
             {
-                case "id": pet.Id = value.ToLong("Pet Id"); break;
-                case "name": pet.Name = value; break;
-                case "status": pet.Status = value; break;
-                case "category": pet.Category = ParseCategory(value); break;
-                case "photourl": pet.PhotoUrls.Add(value); break;
-                case "tag": pet.Tags.Add(ParseTag(value)); break;
+                case "id": pet["id"] = isNull ? null : value == "" ? "" : value.ToLong("Pet Id"); break;
+                case "name": pet["name"] = isNull ? null : value; break;
+                case "status": pet["status"] = isNull ? null : value; break;
+                case "category": pet["category"] = isNull ? null : ParseIdAndName(value); break;
+                case "photourl": AddToList(pet, "photoUrls", isNull ? null : JsonValue.Create(value)); break;
+                case "tag": AddToList(pet, "tags", isNull ? null : ParseIdAndName(value)); break;
                 default: throw new NotSupportedException(
                     $"Field '{row["Field"]}' is not supported. Use Id, Name, Status, Category, PhotoUrl or Tag.");
             }
@@ -54,23 +60,24 @@ public class PetSteps(PetApiClient petApi, CreatedPets createdPets, LastResponse
         return pet;
     }
 
-    private static CategoryDto ParseCategory(string value)
+    // A 'null' row sets the whole list to null; any other row adds an item.
+    private static void AddToList(JsonObject pet, string property, JsonNode? item)
     {
-        var (id, name) = SplitIdAndName(value);
-        return new CategoryDto { Id = id, Name = name };
+        if (item == null)
+            pet[property] = null;
+        else if (pet[property] is JsonArray list)
+            list.Add(item);
+        else
+            pet[property] = new JsonArray(item);
     }
 
-    private static TagDto ParseTag(string value)
-    {
-        var (id, name) = SplitIdAndName(value);
-        return new TagDto { Id = id, Name = name };
-    }
-
-    // "1:friendly" -> (1, "friendly"); "friendly" -> (null, "friendly")
-    private static (long? Id, string Name) SplitIdAndName(string value)
+    // "1:friendly" -> {"id":1,"name":"friendly"}; "friendly" -> {"name":"friendly"} (no id sent)
+    private static JsonObject ParseIdAndName(string value)
     {
         var parts = value.Split(':', 2);
-        return parts.Length == 2 && long.TryParse(parts[0], out var id) ? (id, parts[1].Trim()) : (null, value.Trim());
+        return parts.Length == 2 && long.TryParse(parts[0], out var id)
+            ? new JsonObject { ["id"] = id, ["name"] = parts[1].Trim() }
+            : new JsonObject { ["name"] = value.Trim() };
     }
 
     #endregion
@@ -113,25 +120,62 @@ public class PetSteps(PetApiClient petApi, CreatedPets createdPets, LastResponse
     // Known Id: the table is the whole expected pet, in the same format as on creation; every field must be equal.
     [Then(@"^the response should have '(\d+)' status code and the returned pet should be exactly$")]
     public void ThenTheResponseShouldHaveStatusCodeAndTheReturnedPetShouldBeExactly(int statusCode, Table table) =>
-        AssertMatches(statusCode, BuildPet(table));
+        AssertMatches(statusCode, ToExpectedPet(table));
 
-    // Generated Id: the whole pet must equal the created one, as the POST returned it.
-    [Then(@"^the response should have '(\d+)' status code and the returned pet should match the created pet named '(.*)'$")]
-    public void ThenTheResponseShouldHaveStatusCodeAndTheReturnedPetShouldMatchTheCreatedPetNamed(int statusCode, string name) =>
-        AssertMatches(statusCode, createdPets.GetPetByName(ReplaceVariables(name)));
+    // Generated Id (POST without an Id): every field but the Id must equal the table; the Id must be set.
+    [Then(@"^the response should have '(\d+)' status code and the returned pet should be exactly, with a generated Id$")]
+    public void ThenTheResponseShouldHaveStatusCodeAndTheReturnedPetShouldBeExactlyWithAGeneratedId(int statusCode, Table table)
+    {
+        var expected = ToExpectedPet(table);
+        var actual = ReadPet(statusCode, expected);
+        actual.Should().BeEquivalentTo(expected, options => options.WithStrictOrdering().Excluding(pet => pet.Id));
+        actual.Id.Should().NotBeNull("the backend should generate an Id");
+    }
+
+    // Generated Id, later requests: the table plus the Id the POST returned for that pet.
+    [Then(@"^the response should have '(\d+)' status code and the returned pet should be exactly, with the Id of the created pet named '(.*)'$")]
+    public void ThenTheResponseShouldHaveStatusCodeAndTheReturnedPetShouldBeExactlyWithTheIdOfTheCreatedPetNamed(
+        int statusCode, string name, Table table)
+    {
+        var expected = ToExpectedPet(table);
+        expected.Id = createdPets.GetPetIdByName(ReplaceVariables(name));
+        AssertMatches(statusCode, expected);
+    }
 
     [Then(@"^the created pets should have different IDs$")]
     public void ThenTheCreatedPetsShouldHaveDifferentIds() =>
         createdPets.Value.Select(pet => pet.Id).Should().OnlyHaveUniqueItems();
 
-    private void AssertMatches(int statusCode, PetDto expected) =>
-        ReadPet(statusCode).Should().BeEquivalentTo(expected, options => options.WithStrictOrdering());
+    // The expected pet as the DTO the response is read into (lists not in the table are empty, as the server returns them).
+    private PetDto ToExpectedPet(Table table) => JsonHelper.FromJson<PetDto>(BuildPet(table).ToJsonString());
 
-    private PetDto ReadPet(int statusCode)
+    private void AssertMatches(int statusCode, PetDto expected) =>
+        ReadPet(statusCode, expected).Should().BeEquivalentTo(expected, options => options.WithStrictOrdering());
+
+    // Status, then the JSON contract the DTO cannot show (a missing photoUrls would read as an empty list), then the DTO.
+    private PetDto ReadPet(int statusCode, PetDto expected)
     {
         var response = lastResponse.Value;
         ((int)response.StatusCode).Should().Be(statusCode, "response body: {0}", response.Content);
+
+        var json = response.ContentAsJsonObject();
+        ShouldHaveProperty(json, "id", JsonValueKind.Number);
+        ShouldHaveProperty(json, "photoUrls", JsonValueKind.Array);
+        ShouldHaveProperty(json, "tags", JsonValueKind.Array);
+        if (expected.Name != null)
+            ShouldHaveProperty(json, "name", JsonValueKind.String);
+        if (expected.Status != null)
+            ShouldHaveProperty(json, "status", JsonValueKind.String);
+        if (expected.Category != null)
+            ShouldHaveProperty(json, "category", JsonValueKind.Object);
+
         return response.ContentAs<PetDto>();
+    }
+
+    private static void ShouldHaveProperty(JsonObject json, string property, JsonValueKind kind)
+    {
+        json.TryGetPropertyValue(property, out var node).Should().BeTrue("the pet JSON should have '{0}': {1}", property, json);
+        (node?.GetValueKind() ?? JsonValueKind.Null).Should().Be(kind, "'{0}' in the pet JSON: {1}", property, json);
     }
 
     #endregion

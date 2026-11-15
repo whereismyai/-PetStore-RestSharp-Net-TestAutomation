@@ -7,6 +7,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WhereIsMyAi.RestSharpBase.C
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WhereIsMyAi.PetStore.TestAutomation", "WhereIsMyAi.PetStore.TestAutomation\WhereIsMyAi.PetStore.TestAutomation.csproj", "{06786087-8C12-4684-B184-AE3040CDBE7E}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WhereIsMyAi.RestSharpBase.Core.Tests", "WhereIsMyAi.RestSharpBase.Core.Tests\WhereIsMyAi.RestSharpBase.Core.Tests.csproj", "{11DEFC4B-A605-4237-B73E-9F5413E624AD}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -41,6 +43,18 @@ Global
 		{06786087-8C12-4684-B184-AE3040CDBE7E}.Release|x64.Build.0 = Release|Any CPU
 		{06786087-8C12-4684-B184-AE3040CDBE7E}.Release|x86.ActiveCfg = Release|Any CPU
 		{06786087-8C12-4684-B184-AE3040CDBE7E}.Release|x86.Build.0 = Release|Any CPU
+		{11DEFC4B-A605-4237-B73E-9F5413E624AD}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{11DEFC4B-A605-4237-B73E-9F5413E624AD}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{11DEFC4B-A605-4237-B73E-9F5413E624AD}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{11DEFC4B-A605-4237-B73E-9F5413E624AD}.Debug|x64.Build.0 = Debug|Any CPU
+		{11DEFC4B-A605-4237-B73E-9F5413E624AD}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{11DEFC4B-A605-4237-B73E-9F5413E624AD}.Debug|x86.Build.0 = Debug|Any CPU
+		{11DEFC4B-A605-4237-B73E-9F5413E624AD}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{11DEFC4B-A605-4237-B73E-9F5413E624AD}.Release|Any CPU.Build.0 = Release|Any CPU
+		{11DEFC4B-A605-4237-B73E-9F5413E624AD}.Release|x64.ActiveCfg = Release|Any CPU
+		{11DEFC4B-A605-4237-B73E-9F5413E624AD}.Release|x64.Build.0 = Release|Any CPU
+		{11DEFC4B-A605-4237-B73E-9F5413E624AD}.Release|x86.ActiveCfg = Release|Any CPU
+		{11DEFC4B-A605-4237-B73E-9F5413E624AD}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
