@@ -20,14 +20,14 @@ the status code, clean up after themselves on a shared public server, and docume
 ```bash
 git clone https://github.com/whereismyai/-PetStore-RestSharp-Net-TestAutomation.git
 cd ./-PetStore-RestSharp-Net-TestAutomation
-cp .env.example .env        # BASE_URL=https://petstore.swagger.io/v2, BUGS_REPO_PATH=bugs
+cp .env.example .env        # BASE_URL=https://petstore.swagger.io/v2, BUGS_REPO_PATH=Bugs
 dotnet test                 # restores, builds both projects and runs all scenarios
 ```
 
 | `.env` key | Meaning |
 |---|---|
 | `BASE_URL` | API under test (required) |
-| `BUGS_REPO_PATH` | path of the local bug repository folder, relative to the `.env` folder (`bugs`). Optional: without it, bug-linked scenarios run instead of being skipped, and a warning is logged |
+| `BUGS_REPO_PATH` | path of the local bug repository folder, relative to the `.env` folder (`Bugs`). Optional: without it, bug-linked scenarios run instead of being skipped, and a warning is logged |
 
 A real environment variable with the same name overrides the file (useful in CI).
 
@@ -52,14 +52,14 @@ WhereIsMyAi.RestSharpBase.Core/
   Logger/InternalLogger.cs     console logger that writes on the test's own thread
   Extensions/                  StringExtensions (ToLong)
   Helpers/                     EnvFileHelper (.env settings), JsonHelper
-  Tms/                         Bug, BugRepository (bugs/*.md), BugGate (skip decision)
+  Tms/                         Bug, BugRepository (Bugs/*.md), BugGate (skip decision)
 WhereIsMyAi.PetStore.TestAutomation/
   Api/                         PetStoreConfig, Clients/PetApiClient, DTOs/PetDto
   RuntimeVariables/            per-scenario state: CreatedPets, LastResponse, RunIdInt
   Steps/                       BaseStep, CommonSteps, PetSteps (regions: creation, retrieval, deletion, checks)
   Hooks/                       BugHooks, CleanupHooks (after scenario)
   Tests/Features/              PetStore_Pet.feature
-bugs/                          local bug repository: one BUG-xxx.md per bug
+Bugs/                          local bug repository: one BUG-xxx.md per bug
 ```
 
 Dependencies point one way only: `Tests -> Api -> Core`.
@@ -81,11 +81,11 @@ Dependencies point one way only: `Tests -> Api -> Core`.
 - **Deletion inside the main scenarios.** Delete checks are added to scenarios that already create pets (their
   names say so), so no extra pets are created just to delete them.
 - **Known bugs live next to the tests.** A scenario that documents an API bug asserts the *expected*
-  behaviour and carries one tag, `@bug:<id>`. Before it starts, `BugHooks` reads `bugs/<id>.md`: while the bug
+  behaviour and carries one tag, `@bug:<id>`. Before it starts, `BugHooks` reads `Bugs/<id>.md`: while the bug
   is `Open` the scenario is skipped with the bug's title as the reason. Set `Status: Fixed` and it runs again,
   with no code change. To check for fixes: `BUGS_REPO_PATH=none dotnet test --filter "TestCategory~bug"`.
   The local bug repository was added in a single prompt, only to show the mechanism. In a real project the
-  hook would read the status of the blocking ticket from Jira instead of `bugs/*.md`, and run or skip the test
+  hook would read the status of the blocking ticket from Jira instead of `Bugs/*.md`, and run or skip the test
   depending on it.
 - **One log per scenario.** Each request is logged as `METHOD resource -> status` on the test's own thread,
   so every scenario's report contains exactly its own requests and warnings.
@@ -106,10 +106,10 @@ bug is open.
 | S2 | A pet can be created and deleted with each status value (3 examples) | Pass |
 | S3 | A pet can be created and deleted with boundary values (4 examples) | Pass |
 | S4 | Tags and photo URLs can be reused by several pets and stay after one pet is deleted | Pass |
-| S5 | Pets created without an ID get their own generated IDs | Pass ([BUG-002](bugs/BUG-002.md) fixed) |
-| S6 | Creating a pet with an existing ID is rejected and the existing pet is kept | Blocked: [BUG-001](bugs/BUG-001.md) |
-| S7 | An invalid pet is rejected and nothing is stored (2 examples) | Blocked: [BUG-003](bugs/BUG-003.md) |
-| S8 | Getting a pet by a non-numeric ID is rejected as an invalid ID | Blocked: [BUG-004](bugs/BUG-004.md) |
+| S5 | Pets created without an ID get their own generated IDs | Pass ([BUG-002](Bugs/BUG-002.md) fixed) |
+| S6 | Creating a pet with an existing ID is rejected and the existing pet is kept | Blocked: [BUG-001](Bugs/BUG-001.md) |
+| S7 | An invalid pet is rejected and nothing is stored (2 examples) | Blocked: [BUG-003](Bugs/BUG-003.md) |
+| S8 | Getting a pet by a non-numeric ID is rejected as an invalid ID | Blocked: [BUG-004](Bugs/BUG-004.md) |
 
 ### Coverage matrix
 
@@ -177,11 +177,11 @@ failed exactly as its bug describes:
 
 | Bug | Expected | Actual |
 |---|---|---|
-| [BUG-001](bugs/BUG-001.md) | `409`, existing pet unchanged | `200`, the existing pet is silently overwritten |
-| [BUG-003](bugs/BUG-003.md) | `405 Invalid input`, nothing stored | `200`, a pet without `name` or with `status: flying` is stored |
-| [BUG-004](bugs/BUG-004.md) | `400 Invalid ID supplied` | `404` with `java.lang.NumberFormatException ...` as the message |
+| [BUG-001](Bugs/BUG-001.md) | `409`, existing pet unchanged | `200`, the existing pet is silently overwritten |
+| [BUG-003](Bugs/BUG-003.md) | `405 Invalid input`, nothing stored | `200`, a pet without `name` or with `status: flying` is stored |
+| [BUG-004](Bugs/BUG-004.md) | `400 Invalid ID supplied` | `404` with `java.lang.NumberFormatException ...` as the message |
 
-[BUG-002](bugs/BUG-002.md) (every pet created without an Id got `9223372036854775807`) was fixed on the server
+[BUG-002](Bugs/BUG-002.md) (every pet created without an Id got `9223372036854775807`) was fixed on the server
 on 2026-11-15. Its status is now `Fixed`, so S5 runs again with no code change, and it passes.
 
 ## AI assistance
