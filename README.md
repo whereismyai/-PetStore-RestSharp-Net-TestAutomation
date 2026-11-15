@@ -151,6 +151,14 @@ them, so there is nothing to assert), Ids beyond int64 (the client sends a `long
 - Boundary Ids (`1`, int64 maximum - 1) cannot take the `{run_id_int}` prefix, so they can collide with other
   users' pets on the public server. The outline is tagged `@shared-ids` to leave it out of unstable runs.
 
+## Continuous integration
+
+`.github/workflows/dotnet-desktop.yml` runs on every pull request into `main`:
+
+- `build` - restores and builds the solution. Make it a required check (branch protection) to block merges.
+- `test` - runs `dotnet test` after a successful build, with `BASE_URL` and `BUGS_REPO_PATH` set in the workflow so the open-bug skip logic works.
+- Skipped scenarios stay visible: each one is a yellow warning annotation, and a separate grey `Skipped tests` check lists them (only created when something was skipped, so do not make it required; it needs a PR from this repo, not a fork).
+
 ## Test report
 
 Run on 2026-11-15 against `https://petstore.swagger.io/v2`:
@@ -177,9 +185,8 @@ Every scenario and every bug report was run and verified against the live API.
 
 ## Future to-dos
 
-- **Run the tests in GitHub Actions.** Add a workflow that runs `dotnet test` on every push and pull request,
-  on demand (`workflow_dispatch`), and on a nightly `schedule` (cron) against the public server. `BASE_URL`
-  and `BUGS_REPO_PATH` come from workflow environment variables.
+- **More CI triggers.** The workflow runs on pull requests only; add on demand (`workflow_dispatch`) and a
+  nightly `schedule` (cron) against the public server.
 - **Reporting.** Publish the results of each run: TRX as a build artifact plus a test summary on the
   workflow and PR page. Then add an HTML report (e.g. Allure with its Reqnroll adapter) with each scenario's
   steps and log lines.
