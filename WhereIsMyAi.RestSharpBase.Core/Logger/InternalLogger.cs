@@ -12,9 +12,7 @@ public static class InternalLogger
 
     public static ILogger Logger { get; } = Factory.CreateLogger("RestSharpBase");
 
-    // Not the built-in AddConsole: it writes from a background thread, so the test runner attaches
-    // every line to the first test that logged and drops them for all later tests. Writing on the
-    // calling thread puts each line into the output of the test that produced it.
+    // Not AddConsole: it writes from a background thread, so the runner attaches every line to the first test.
     private sealed class SyncConsoleLoggerProvider : ILoggerProvider
     {
         public ILogger CreateLogger(string categoryName) => new SyncConsoleLogger(categoryName);

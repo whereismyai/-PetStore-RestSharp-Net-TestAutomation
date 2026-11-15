@@ -16,6 +16,7 @@ public class BugGateTests
         File.WriteAllText(Path.Combine(_path, "BUG-001.md"), "# BUG-001\n- Id: BUG-001\n- Status: Open\n- Title: Pet is overwritten\n");
         File.WriteAllText(Path.Combine(_path, "BUG-002.md"), "Id: BUG-002\nStatus: Fixed\nTitle: Ids repeat\n");
         File.WriteAllText(Path.Combine(_path, "BUG-003.md"), "- id: BUG-003\n- status: open\n- title: lower-case keys\n");
+        File.WriteAllText(Path.Combine(_path, "BUG-004.md"), "- Id: BUG-004\n- Status: Opne\n- Title: typo in the status\n");
     }
 
     [TearDown]
@@ -40,6 +41,13 @@ public class BugGateTests
     [Test]
     public void NoBugTag_Runs() =>
         new BugGate(_path).GetSkipReason(["smoke", "shared-ids"]).Should().BeNull();
+
+    [Test]
+    public void InvalidStatus_IsNullAndRuns()
+    {
+        new BugRepository(_path).Find("BUG-004")!.Status.Should().BeNull();
+        new BugGate(_path).GetSkipReason(["bug:BUG-004"]).Should().BeNull();
+    }
 
     [Test]
     public void UnknownBugId_Runs() =>

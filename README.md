@@ -46,7 +46,7 @@ dotnet test --logger "trx"                        # TRX report with each scenari
 |---|---|
 | `WhereIsMyAi.RestSharpBase.Core` | Project-agnostic base: RestSharp client wrapper, logger, helpers and a small local TMS. It knows nothing about PetStore or any test framework, so other API test projects can reuse it. |
 | `WhereIsMyAi.PetStore.TestAutomation` | Everything PetStore-specific: API client, DTOs, step definitions, hooks, scenario variables, feature files. References Core. |
-| `WhereIsMyAi.RestSharpBase.Core.Tests` | Unit tests for Core: request building, transport failure, malformed JSON, `.env` precedence, bug-gate decisions. Fake HTTP handler, no network. A smoke check made entirely with AI assistance, outside the 2-hour scope (see [AI assistance](#ai-assistance)). |
+| `WhereIsMyAi.RestSharpBase.Core.Tests` | Unit tests for Core: request building, transport failure, malformed JSON, `.env` precedence, bug-gate decisions, a valid `Status` in every `Bugs/*.md`. Fake HTTP handler, no network. A smoke check made entirely with AI assistance, outside the 2-hour scope (see [AI assistance](#ai-assistance)). |
 
 ```
 WhereIsMyAi.RestSharpBase.Core/
@@ -88,36 +88,37 @@ open, and shows the fix as soon as it lands.
   Every pet is sent with its required fields (`name`, `photoUrls`) unless that field is what the scenario tests,
   so an invalid-input scenario has exactly one thing wrong.
   Names are in English and Ukrainian, with emoji, digits and brackets; tags add Spanish, French and `& " % ,`.
-  Error replies are checked by status and message; the expected message is the spec's description of that
-  response (`Pet not found`, `Invalid ID supplied`, `Invalid input`). The only exception is `409` for a
-  duplicate Id, which the spec does not define (see BUG-001); S1's repeated `DELETE` checks the status only,
-  because its missing message is BUG-005 (S11).
-- **No collisions on a shared server.** Explicit IDs are prefixed with `{run_id_int}`, a random 4-digit
+  Error replies are checked by status and by the reply's `message` field, compared exactly; the expected message
+  is the spec's description of that response (`Pet not found`, `Invalid ID supplied`, `Invalid input`). The only
+  exception is `409` for a duplicate Id, which the spec does not define (see BUG-001); S1's repeated `DELETE`
+  checks the status only, because its missing message is BUG-005 (S12).
+- **No collisions on a shared server.** Explicit Ids are prefixed with `{run_id_int}`, a random 4-digit
   number generated for each scenario (`{run_id_int}12345` -> `482112345`), in the request, the checks and the
   GET/DELETE steps. The number is logged at the start of the scenario, so the data of a failed run can be found.
-- **Clean up always.** Every pet a scenario creates is recorded; `CleanupHooks` deletes all of them after
+- **Clean up always.** Every pet a scenario creates is recorded, with the Id the reply returned and the Id that
+  was sent (in case the reply is wrong or a rejected pet was stored); `CleanupHooks` deletes all of them after
   the scenario, whether it passed or failed.
-- **Readable steps.** Step text names the HTTP method and URL. A pet is addressed by ID, by name or as the last
+- **Readable steps.** Step text names the HTTP method and URL. A pet is addressed by Id, by name or as the last
   created pet.
 - **Deletion inside the main scenarios.** Delete checks are added to scenarios that already create pets (their
   names say so), so no extra pets are created just to delete them.
 - **Known bugs live next to the tests.** A scenario that documents an API bug asserts the *expected*
   behaviour and carries one tag, `@bug:<id>`. Before it starts, `BugHooks` reads `Bugs/<id>.md`: while the bug
-  is `Open` the scenario is skipped with the bug's title as the reason. Set `Status: Fixed` and it runs again,
-  with no code change. To check for fixes: `BUGS_REPO_PATH=none dotnet test --filter "TestCategory~bug"`.
+  is `Open` the scenario is skipped with the bug's title as the reason. Set `Status: Fixed` (or `Closed`) and it
+  runs again, with no code change; any other value is a warning, and a Core unit test fails on it. To check for fixes: `BUGS_REPO_PATH=none dotnet test --filter "TestCategory~bug"`.
   The local bug repository was added in a single prompt, only to show the mechanism. In a real project the
   hook would read the status of the blocking ticket from Jira instead of `Bugs/*.md`, and run or skip the test
   depending on it.
 - **One log per scenario.** Each request is logged as `Post /pet -> 200` (with the request body for `POST` and
   `PUT`) on the test's own thread, so every scenario's report contains exactly its own requests and warnings.
 - **Ready for parallel runs, run serially.** All scenario state comes from Reqnroll DI, one instance per
-  scenario, and nothing is static. Parallel runs are not enabled; a trial with NUnit scenario-level
+  scenario; no scenario state is static. Parallel runs are not enabled; a trial with NUnit scenario-level
   parallelism (6 at once) passed with correct per-scenario logs.
 
 ## Coverage
 
 S1-S5 create their own pets, check the `POST` reply and the `GET` read-back against the full expected pet,
-and add delete checks where a pet already exists, so no pet is created only to be deleted. S6-S11 each document
+and add delete checks where a pet already exists, so no pet is created only to be deleted. S6-S12 each document
 one open bug: they assert the expected behaviour and are skipped while the bug is open.
 
 | # | Scenario | Result |
@@ -126,45 +127,45 @@ one open bug: they assert the expected behaviour and are skipped while the bug i
 | S2 | A pet can be created and deleted with each status value (3 examples) | Pass |
 | S3 | A pet can be created and deleted with boundary Ids and name lengths (4 examples) | Pass |
 | S4 | Tags and photo URLs can be shared by two pets and stay after one pet is deleted | Pass |
-| S5 | Pets created without an ID get their own generated IDs | Pass ([BUG-002](Bugs/BUG-002.md) fixed) |
-| S6 | Creating a pet with an existing ID is rejected with 409 Conflict | Blocked: [BUG-001](Bugs/BUG-001.md) |
-| S7 | Creating a pet with an existing ID keeps the existing pet | Blocked: [BUG-001](Bugs/BUG-001.md) |
-| S8 | An invalid pet is rejected with 405 Invalid input and nothing is stored (3 examples) | Blocked: [BUG-003](Bugs/BUG-003.md) |
-| S9 | Getting a pet by an invalid ID is rejected with 400 Invalid ID supplied (2 examples) | Blocked: [BUG-004](Bugs/BUG-004.md) |
-| S10 | Deleting a pet by an invalid ID is rejected with 400 Invalid ID supplied (2 examples) | Blocked: [BUG-004](Bugs/BUG-004.md) |
-| S11 | Deleting a pet that does not exist is answered with 404 Pet not found | Blocked: [BUG-005](Bugs/BUG-005.md) |
+| S5 | Pets created without an Id or with Id 0 get their own generated Ids | Pass ([BUG-002](Bugs/BUG-002.md) closed: cannot reproduce) |
+| S6 | Creating a pet with an existing Id is rejected with 409 Conflict | Blocked: [BUG-001](Bugs/BUG-001.md) |
+| S7 | Creating a pet with an existing Id keeps the existing pet | Blocked: [BUG-001](Bugs/BUG-001.md) |
+| S8 | An invalid pet is rejected with 405 Invalid input (3 examples) | Blocked: [BUG-003](Bugs/BUG-003.md) |
+| S9 | An invalid pet is not stored (3 examples) | Blocked: [BUG-003](Bugs/BUG-003.md) |
+| S10 | Getting a pet by an invalid Id is rejected with 400 Invalid ID supplied (2 examples) | Blocked: [BUG-004](Bugs/BUG-004.md) |
+| S11 | Deleting a pet by an invalid Id is rejected with 400 Invalid ID supplied (2 examples) | Blocked: [BUG-004](Bugs/BUG-004.md) |
+| S12 | Deleting a pet that does not exist is answered with 404 Pet not found | Blocked: [BUG-005](Bugs/BUG-005.md) |
 
 ### Coverage matrix
 
 | Input | Equivalence class | Covered by | Status |
 |---|---|---|---|
 | `id` (body) | explicit, new | S1, S2, S4 | Pass |
-| `id` (body) | boundaries: `1`, 18 digits (above 2^53) | S3 | Pass |
+| `id` (body) | boundaries: `1` (smallest Id stored as sent), 18 digits (above 2^53) | S3 | Pass |
 | `id` (body) | explicit, already used | S6, S7 | Blocked: BUG-001 |
-| `id` (body) | not sent (generated) | S5 | Pass |
+| `id` (body) | not sent / `0` (both generated) | S5 | Pass |
 | `id` (path) | stored pet | S1-S5 | Pass |
 | `id` (path) | deleted pet | S1, S2 | Pass |
-| `id` (path) | non-numeric: GET / DELETE | S9 / S10 | Blocked: BUG-004 |
-| `id` (path) | int64 maximum + 1: GET / DELETE | S9 / S10 | Blocked: BUG-004 |
+| `id` (path) | non-numeric: GET / DELETE | S10 / S11 | Blocked: BUG-004 |
+| `id` (path) | int64 maximum + 1: GET / DELETE | S10 / S11 | Blocked: BUG-004 |
 | `name` | English, Ukrainian, emoji, digits and brackets | S1, S2, S4 | Pass |
 | `name` | empty string (accepted: the spec sets no minimum length) | S3 | Pass |
 | `name` | 256 characters | S3 | Pass |
-| `name` | missing (required) | S8 | Blocked: BUG-003 |
+| `name` | missing (required) | S8, S9 | Blocked: BUG-003 |
 | `status` | `available`, `pending`, `sold` | S2 | Pass |
 | `status` | not sent | S3, S4, S5 | Pass |
-| `status` | not in the enum | S8 | Blocked: BUG-003 |
+| `status` | not in the enum | S8, S9 | Blocked: BUG-003 |
 | `category` | with id / name only (id comes back as `0`) / not sent | S1 / S5 / S2-S4 | Pass |
 | `photoUrls` | one / several / shared by two pets | S2, S3, S5 / S1 / S4 | Pass |
-| `photoUrls` | missing (required) | S8 | Blocked: BUG-003 |
+| `photoUrls` | missing (required) | S8, S9 | Blocked: BUG-003 |
 | `tags` | several with ids; Ukrainian, Spanish, French and `& " % ,` | S1, S4 | Pass |
 | `tags` | not sent / shared by two pets | S2, S3, S5 / S4 | Pass |
 | `DELETE` | existing pet -> `200`, Id as message | S2, S3 (status only: S1, S4) | Pass |
 | `DELETE` | already deleted -> `404` | S1 | Pass |
-| `DELETE` | never existed -> `404 Pet not found` | S11 | Blocked: BUG-005 |
+| `DELETE` | never existed -> `404 Pet not found` | S12 | Blocked: BUG-005 |
 | `DELETE` | one of two pets sharing a tag and photo URL | S4 | Pass |
 
-Not covered: Id `0` and negative Ids (the API replaces them with a generated Id; the spec defines no rule for
-them, so there is nothing to assert), body Ids beyond int64 (the client sends a `long`), an empty `photoUrls`
+Not covered: negative Ids (the API treats them like `0` and generates an Id; the spec defines no rule for them), body Ids beyond int64 (the client sends a `long`), an empty `photoUrls`
 list, the `api_key` header on `DELETE`, malformed JSON, `PUT /pet` and `GET /pet/findByStatus`.
 
 ### Trade-offs
@@ -176,11 +177,11 @@ list, the `api_key` header on `DELETE`, malformed JSON, `PUT /pet` and `GET /pet
 - Blocked scenarios are skipped, not run as known failures: no side effects on the shared server, but a fix is
   only noticed by running them with the gate off.
 - `{run_id_int}` makes Id collisions on the public server unlikely, not impossible; there are no retries.
-- The boundary Id `1` cannot take the `{run_id_int}` prefix, so it can collide with other users' pets on the
-  public server. Only that example is tagged `@shared-ids` (its own `Examples` block), so unstable runs can
-  leave it out.
-- The duplicate-Id bug has two scenarios: S6 asserts `409` (an assumption: the spec defines no code for it),
-  S7 asserts only that the existing pet is kept, so a fix with a different error code still turns S7 green.
+- The boundary Id `1` cannot take the `{run_id_int}` prefix: because `POST` overwrites (BUG-001), the scenario
+  replaces and then deletes another user's pet `1`, if there is one. Acceptable on a public demo server. Only
+  that example is tagged `@shared-ids` (its own `Examples` block), so runs can leave it out.
+- The duplicate-Id and invalid-pet bugs have two scenarios each: one asserts the status code (S6, S8), the other
+  only what is stored (S7, S9), so a fix with a different error code still turns the second green.
 - The upper boundary is an 18-digit Id, not int64 maximum - 1: generated Ids look like the highest Id + 1, so a
   pet near the maximum would make every user's generated Ids overflow and collide (the BUG-002 symptom).
 
@@ -193,8 +194,8 @@ list, the `api_key` header on `DELETE`, malformed JSON, `PUT /pet` and `GET /pet
 - `test` - runs the PetStore scenarios after a successful build, with `BASE_URL` and `BUGS_REPO_PATH` set in the workflow.
   Deliberately not required: the tests hit a shared public server that the PR does not control, so a red
   test run is shown on the PR but does not block the merge.
-- Skipped scenarios stay visible: each one is a warning annotation, and a grey `Skipped tests` check lists them
-  (only for PRs from this repository; a fork's token cannot create checks).
+- Skipped scenarios stay visible: each one is a warning annotation with its bug's id and title, and a grey
+  `Skipped tests` check lists them (only for PRs from this repository; a fork's token cannot create checks).
 
 ## Test report
 
@@ -202,11 +203,11 @@ Run on 2026-11-15 against `https://petstore.swagger.io/v2`:
 
 | Total | Passed | Failed | Skipped (open bug) | Duration |
 |---|---|---|---|---|
-| 20 | 10 | 0 | 10 | ~10 s |
+| 23 | 10 | 0 | 13 | ~10 s |
 
-Plus 35 Core unit tests, all passing (~0.1 s).
+Plus 43 Core unit tests, all passing (~0.1 s).
 
-All 10 skipped scenarios were also run on purpose (with `BUGS_REPO_PATH` pointing to a missing folder). Each
+All 13 skipped scenarios were also run on purpose (with `BUGS_REPO_PATH` pointing to a missing folder). Each
 failed exactly as its bug describes:
 
 | Bug | Expected | Actual |
@@ -217,8 +218,9 @@ failed exactly as its bug describes:
 | [BUG-005](Bugs/BUG-005.md) | `DELETE` of a missing pet: `404 Pet not found` | `404` with an empty body |
 
 [BUG-002](Bugs/BUG-002.md) (every pet created without an Id got `9223372036854775807`) has not reproduced since
-2026-11-15; the likely cause is a pet near the int64 maximum (see Trade-offs). Its status is `Fixed`, so S5 runs
-again with no code change, and it passes.
+2026-11-15, so it is `Closed` as Cannot reproduce: nothing shows a fix. The likely cause is still there: generated
+Ids are the highest Id + 1 (a deleted pet's Id goes to the next pet) and are already about 753 000 below the int64
+maximum, so one pet at the maximum would make them overflow (see Trade-offs). S5 runs again and passes.
 
 ## AI assistance
 

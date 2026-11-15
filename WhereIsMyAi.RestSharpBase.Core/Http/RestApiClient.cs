@@ -8,12 +8,7 @@ using RestSharp;
 
 namespace WhereIsMyAi.RestSharpBase.Core.Http;
 
-/// <summary>
-/// Generic RestSharp wrapper. API clients derive from it and expose business methods.
-/// Configure without changing this class: pass your own RestClient (auth, default headers, timeouts) and logger,
-/// and send anything the helpers do not cover (headers, query parameters, other bodies) through Execute.
-/// Takes ownership of the RestClient: Dispose disposes it, so give each API client its own.
-/// </summary>
+/// <summary>Base for API clients: pass a configured RestClient (auth, headers, timeouts) and logger; owns and disposes that RestClient.</summary>
 public abstract class RestApiClient(RestClient client, ILogger? logger = null) : IDisposable
 {
     private readonly ILogger _log = logger ?? InternalLogger.Logger;
@@ -34,10 +29,7 @@ public abstract class RestApiClient(RestClient client, ILogger? logger = null) :
     protected RestResponse Delete(string resource) =>
         Execute(new RestRequest(resource, Method.Delete));
 
-    /// <summary>
-    /// Sends any request and logs it; throws when there is no HTTP response at all. Add a JSON body as
-    /// AddStringBody(JsonHelper.ToJson(body), ContentType.Json), like Post/Put, so it is serialized and logged the same way.
-    /// </summary>
+    /// <summary>Sends and logs any request (add JSON as AddStringBody(JsonHelper.ToJson(body), ContentType.Json)); throws when there is no HTTP response.</summary>
     protected RestResponse Execute(RestRequest request)
     {
         if (request.Parameters.OfType<BodyParameter>().FirstOrDefault()?.Value is string body)
@@ -45,8 +37,7 @@ public abstract class RestApiClient(RestClient client, ILogger? logger = null) :
 
         var response = client.Execute(request);
 
-        // Status 0 means no HTTP response at all (DNS, timeout, connection refused) - fail loudly
-        // instead of letting a test assert against a fake status code.
+        // Status 0 = no HTTP response (DNS, timeout, refused): fail loudly instead of letting a test assert a fake status.
         if (response.StatusCode == 0)
         {
             _log.LogError("{Method} {Resource} got no response: {Error}", request.Method, request.Resource, response.ErrorMessage);

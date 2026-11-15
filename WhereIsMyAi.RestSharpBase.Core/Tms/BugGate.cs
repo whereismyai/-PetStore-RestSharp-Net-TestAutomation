@@ -6,13 +6,7 @@ using WhereIsMyAi.RestSharpBase.Core.Logger;
 
 namespace WhereIsMyAi.RestSharpBase.Core.Tms;
 
-/// <summary>
-/// Decides whether a test linked to a bug must be skipped. A test is linked by a tag "bug:&lt;id&gt;"
-/// (e.g. bug:BUG-001); it is skipped while that bug is Open in the <see cref="BugRepository"/>.
-/// Never skips when it cannot tell: no repository configured, path missing, or unknown bug id - those
-/// cases only log a warning and the test runs. Framework-agnostic: the caller performs the actual skip.
-/// </summary>
-/// <param name="bugRepositoryPath">Path of the bug repository folder; null when it is not configured.</param>
+/// <summary>Skip decision for tests tagged bug:&lt;id&gt;: skip while the bug is Open; when it cannot tell, warn and run.</summary>
 public class BugGate(string? bugRepositoryPath)
 {
     public const string TagPrefix = "bug:";
@@ -44,6 +38,13 @@ public class BugGate(string? bugRepositoryPath)
             if (bug == null)
             {
                 Log.LogWarning("Bug {BugId} not found in bug repository {Path} - test runs", bugId, _repository.Path);
+                continue;
+            }
+
+            if (bug.Status == null)
+            {
+                Log.LogWarning("Bug {BugId} has no valid Status (one of {Statuses}) - test runs",
+                    bug.Id, string.Join(", ", Enum.GetNames<BugStatus>()));
                 continue;
             }
 

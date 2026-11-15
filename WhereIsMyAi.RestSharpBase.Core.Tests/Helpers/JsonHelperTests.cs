@@ -52,6 +52,27 @@ public class JsonHelperTests
     }
 
     [Test]
+    public void GetJsonProperty_ReadsAStringWithoutQuotesAndANumberAsWritten()
+    {
+        var response = Response("""{"code":1,"type":"error","message":"Pet \"Rex\" not found"}""");
+
+        response.GetJsonProperty("message").Should().Be("Pet \"Rex\" not found");
+        response.GetJsonProperty("code").Should().Be("1");
+    }
+
+    [TestCase(null, TestName = "GetJsonProperty_Throws_NoBody")]
+    [TestCase("", TestName = "GetJsonProperty_Throws_EmptyBody")]
+    [TestCase("<html>error</html>", TestName = "GetJsonProperty_Throws_Html")]
+    [TestCase("""[{"message":"x"}]""", TestName = "GetJsonProperty_Throws_Array")]
+    [TestCase("""{"msg":"x"}""", TestName = "GetJsonProperty_Throws_PropertyMissing")]
+    public void GetJsonProperty_ThrowsAReadableErrorWhenTheBodyHasNoSuchProperty(string? body)
+    {
+        var act = () => Response(body).GetJsonProperty("message");
+
+        act.Should().Throw<InvalidOperationException>().WithMessage("Expected a JSON object with 'message' in the response body (status 200)*");
+    }
+
+    [Test]
     public void ToJson_LeavesNullPropertiesOut_CamelCase()
     {
         JsonHelper.ToJson(new ItemDto { Id = 1, Name = "" }).Should().Be("""{"id":1,"name":""}""");

@@ -16,8 +16,8 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
         with:
           dotnet-version: 10.0.x
       - run: dotnet restore
@@ -32,20 +32,27 @@ jobs:
       BASE_URL: https://petstore.swagger.io/v2
       BUGS_REPO_PATH: ${{ github.workspace }}/Bugs # enables the open-bug skip logic
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
         with:
           dotnet-version: 10.0.x
       - run: dotnet test WhereIsMyAi.PetStore.TestAutomation -c Release --logger trx --results-directory TestResults
       - name: Collect skipped tests
         if: always()
+        shell: python
         run: |
-          grep -h 'outcome="NotExecuted"' TestResults/*.trx | sed -E 's/.*testName="([^"]*)".*/\1/; s/&quot;/"/g; s/&amp;/\&/g' > skipped.txt || true
-          while read -r name; do echo "::warning title=Skipped (open bug)::$name"; done < skipped.txt
+          import glob, xml.etree.ElementTree as ET
+          ns = {"t": "http://microsoft.com/schemas/VisualStudio/TeamTest/2010"}
+          skipped = [f"{r.get('testName')} - {r.findtext('.//t:Message', '', ns).strip()}"
+                     for trx in glob.glob("TestResults/*.trx")
+                     for r in ET.parse(trx).iterfind(".//t:UnitTestResult[@outcome='NotExecuted']", ns)]
+          open("skipped.txt", "w").write("\n".join(skipped))
+          for line in skipped:
+              print(f"::warning title=Skipped (open bug)::{line}")
       - name: Grey "Skipped tests" check
         # fork PRs get a read-only token and cannot create checks; the warnings above still show the skips
         if: always() && github.event.pull_request.head.repo.full_name == github.repository
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: |
             const names = require('fs').readFileSync('skipped.txt', 'utf8').split('\n').filter(Boolean);

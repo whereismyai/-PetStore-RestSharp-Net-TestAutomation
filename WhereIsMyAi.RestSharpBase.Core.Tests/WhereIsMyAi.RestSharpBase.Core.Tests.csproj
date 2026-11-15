@@ -22,4 +22,9 @@
     </PackageReference>
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- This repository's bug files, for Tms/BugFilesTests -->
+    <None Include="../Bugs/*.md" LinkBase="Bugs" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>

@@ -1,21 +1,12 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text.RegularExpressions;
 
 namespace WhereIsMyAi.RestSharpBase.Core.Tms;
 
-/// <summary>
-/// Local bug repository: a folder with one Markdown file per bug, named after the bug id (BUG-001.md).
-/// The file holds "Key: value" lines (a Markdown list item "- Key: value" works too); the repository reads
-/// Id, Status and Title, everything else is free text for people:
-/// <code>
-/// # BUG-001: Saving a record twice creates a duplicate
-/// - Id: BUG-001
-/// - Status: Open
-/// - Title: Saving a record twice creates a duplicate
-/// </code>
-/// </summary>
+/// <summary>Local bug repository: one &lt;id&gt;.md per bug with "Id:", "Status:" and "Title:" lines (Markdown list items work too).</summary>
 public class BugRepository(string path)
 {
     private static readonly Regex Field = new(@"^\s*[-*]?\s*(?<key>Id|Status|Title)\s*:\s*(?<value>.+?)\s*$",
@@ -39,7 +30,13 @@ public class BugRepository(string path)
 
         return new Bug(
             fields.GetValueOrDefault("Id", id),
-            fields.GetValueOrDefault("Status", ""),
+            ParseStatus(fields.GetValueOrDefault("Status")),
             fields.GetValueOrDefault("Title", ""));
     }
+
+    // Only the exact names of BugStatus, any case: "Opne" or "1" is not a status.
+    private static BugStatus? ParseStatus(string? value) =>
+        value != null && Enum.GetNames<BugStatus>().Contains(value, StringComparer.OrdinalIgnoreCase)
+            ? Enum.Parse<BugStatus>(value, ignoreCase: true)
+            : null;
 }
