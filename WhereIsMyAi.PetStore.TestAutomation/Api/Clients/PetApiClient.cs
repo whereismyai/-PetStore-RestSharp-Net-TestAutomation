@@ -5,12 +5,8 @@ using RestSharp;
 namespace WhereIsMyAi.PetStore.TestAutomation.Api.Clients;
 
 /// <summary>Business methods for the /pet endpoints. Reqnroll DI creates one instance per scenario.</summary>
-public class PetApiClient : RestApiClient
+public class PetApiClient() : RestApiClient(PetStoreConfig.BaseUrl)
 {
-    public PetApiClient() : base(PetStoreConfig.BaseUrl)
-    {
-    }
-
     public RestResponse CreatePet(PetDto pet) => Post("/pet", pet);
 
     // String IDs, so tests can send invalid ones ("abc").

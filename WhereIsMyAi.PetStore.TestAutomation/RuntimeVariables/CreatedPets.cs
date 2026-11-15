@@ -5,39 +5,31 @@ using WhereIsMyAi.PetStore.TestAutomation.Api.DTOs;
 
 namespace WhereIsMyAi.PetStore.TestAutomation.RuntimeVariables;
 
-/// <summary>
-/// Runtime context variable: pets created by the current scenario, in creation order, as the POST response
-/// returned them. Reqnroll DI creates one instance per scenario; the AfterScenario hook removes every pet
-/// listed here from the backend.
-/// Deleted pets stay listed so a scenario can still refer to them (e.g. check that GET now returns 404).
-/// </summary>
+/// <summary>Runtime variable: pets created by the current scenario, as POST returned them; deleted pets stay listed.</summary>
 public class CreatedPets
 {
     public List<PetDto> Value { get; } = new();
 
-    /// <summary>The most recently created pet ("the last created pet").</summary>
-    public PetDto Last =>
-        Value.LastOrDefault()
-        ?? throw new InvalidOperationException("No pet has been created in this scenario yet.");
+    public PetDto GetLastPet() =>
+        Value.LastOrDefault() ?? throw new InvalidOperationException("No pet has been created in this scenario yet.");
 
-    /// <summary>Id of the most recently created pet.</summary>
-    public long LastId => Last.Id ?? throw new InvalidOperationException("The last created pet has no Id.");
+    public long GetLastPetId() =>
+        GetLastPet().Id ?? throw new InvalidOperationException("The last created pet has no Id.");
 
-    /// <summary>The pet created in this scenario with this name; the name must be unique within the scenario.</summary>
+    /// <summary>The name must be unique within the scenario.</summary>
     public PetDto GetPetByName(string name)
     {
         var pets = Value.Where(pet => pet.Name == name).ToList();
         return pets.Count == 1
             ? pets[0]
             : throw new InvalidOperationException(pets.Count == 0
-                ? $"No pet named '{name}' has been created in this scenario. Created so far: {CreatedPetsNames()}."
+                ? $"No pet named '{name}' has been created in this scenario. Created so far: {GetCreatedPetNames()}."
                 : $"{pets.Count} pets named '{name}' were created in this scenario - give each pet a unique name.");
     }
 
-    private string CreatedPetsNames() =>
-        Value.Count == 0 ? "none" : string.Join(", ", Value.Select(pet => $"'{pet.Name}'"));
-
-    /// <summary>Id of the pet created in this scenario with this name.</summary>
-    public long IdOf(string name) =>
+    public long GetPetIdByName(string name) =>
         GetPetByName(name).Id ?? throw new InvalidOperationException($"The pet named '{name}' has no Id.");
+
+    private string GetCreatedPetNames() =>
+        Value.Count == 0 ? "none" : string.Join(", ", Value.Select(pet => $"'{pet.Name}'"));
 }

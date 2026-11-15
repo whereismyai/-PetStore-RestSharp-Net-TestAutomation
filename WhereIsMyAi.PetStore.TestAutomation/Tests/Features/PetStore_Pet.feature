@@ -4,7 +4,7 @@ Feature: Pet endpoints
     Ukrainian, Spanish and French with emoji and special characters (& " ( ) % ,).
 
 Scenario: A pet can be created with all fields and deleted
-    When pet is created with the following values via POST /pet
+    When a pet is created with the following values via POST /pet
         | Field    | Value                        |
         | Id       | {run_id_int}12345            |
         | Name     | Baily                        |
@@ -39,13 +39,13 @@ Scenario: A pet can be created with all fields and deleted
         | Tag      | 2:з щепленням, 100%          |
         | Tag      | 3:small & "cute"             |
     When the created pet named 'Baily' is deleted via DELETE /pet/{id}
-    Then the response status should be '200'
+    Then the response should have '200' status code
     When the created pet named 'Baily' is deleted via DELETE /pet/{id}
-    Then the response status should be '404'
+    Then the response should have '404' status code
     And the response body should be empty
 
 Scenario Outline: A pet can be created and deleted with each status value
-    When pet is created with the following values via POST /pet
+    When a pet is created with the following values via POST /pet
         | Field  | Value            |
         | Id     | {run_id_int}<id> |
         | Name   | <name>           |
@@ -62,10 +62,10 @@ Scenario Outline: A pet can be created and deleted with each status value
         | Name   | <name>           |
         | Status | <status>         |
     When the last created pet is deleted via DELETE /pet/{id}
-    Then the response status should be '200'
+    Then the response should have '200' status code
     And the response message should be '{run_id_int}<id>'
     When the last created pet is retrieved via GET /pet/{id}
-    Then the response status should be '404'
+    Then the response should have '404' status code
     And the response message should be 'Pet not found'
 
     Examples:
@@ -77,7 +77,7 @@ Scenario Outline: A pet can be created and deleted with each status value
 # Boundary Ids cannot take the {run_id_int} prefix and can be shared with other users of the public server.
 @shared-ids
 Scenario Outline: A pet can be created and deleted with boundary values
-    When pet is created with the following values via POST /pet
+    When a pet is created with the following values via POST /pet
         | Field | Value  |
         | Id    | <id>   |
         | Name  | <name> |
@@ -91,7 +91,7 @@ Scenario Outline: A pet can be created and deleted with boundary values
         | Id    | <id>   |
         | Name  | <name> |
     When the last created pet is deleted via DELETE /pet/{id}
-    Then the response status should be '200'
+    Then the response should have '200' status code
     And the response message should be '<id>'
 
     Examples:
@@ -102,13 +102,13 @@ Scenario Outline: A pet can be created and deleted with boundary values
         | 256-character name                 | {run_id_int}50002   | AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA |
 
 Scenario: Tags and photo URLs can be reused by several pets and stay after one pet is deleted
-    When pet is created with the following values via POST /pet
+    When a pet is created with the following values via POST /pet
         | Field    | Value                          |
         | Id       | {run_id_int}11111              |
         | Name     | Garfield                       |
         | PhotoUrl | https://example.com/shared.jpg |
         | Tag      | 1:muy cariñoso & très fluffy   |
-    And pet is created with the following values via POST /pet
+    And a pet is created with the following values via POST /pet
         | Field    | Value                          |
         | Id       | {run_id_int}22222              |
         | Name     | Beethoven (1992)               |
@@ -128,7 +128,7 @@ Scenario: Tags and photo URLs can be reused by several pets and stay after one p
         | PhotoUrl | https://example.com/shared.jpg |
         | Tag      | 1:muy cariñoso & très fluffy   |
     When the created pet named 'Garfield' is deleted via DELETE /pet/{id}
-    Then the response status should be '200'
+    Then the response should have '200' status code
     When the created pet named 'Beethoven (1992)' is retrieved via GET /pet/{id}
     Then the response should have '200' status code and the returned pet should be exactly
         | Field    | Value                          |
@@ -139,16 +139,16 @@ Scenario: Tags and photo URLs can be reused by several pets and stay after one p
 
 @bug:BUG-002
 Scenario: Pets created without an ID get their own generated IDs
-    When pet is created with the following values via POST /pet
+    When a pet is created with the following values via POST /pet
         | Field    | Value     |
         | Name     | Toothless |
         | Category | DRAGONS   |
-    Then the response status should be '200'
-    When pet is created with the following values via POST /pet
+    Then the response should have '200' status code
+    When a pet is created with the following values via POST /pet
         | Field    | Value      |
         | Name     | Stormfly   |
         | Category | NIGHT_FURY |
-    Then the response status should be '200'
+    Then the response should have '200' status code
     And the created pets should have different IDs
     When the created pet named 'Toothless' is retrieved via GET /pet/{id}
     Then the response should have '200' status code and the returned pet should match the created pet named 'Toothless'
@@ -157,17 +157,17 @@ Scenario: Pets created without an ID get their own generated IDs
 
 @bug:BUG-001
 Scenario: Creating a pet with an existing ID is rejected and the existing pet is kept
-    When pet is created with the following values via POST /pet
+    When a pet is created with the following values via POST /pet
         | Field  | Value             |
         | Id     | {run_id_int}12348 |
         | Name   | Norbert           |
         | Status | available         |
-    And pet is created with the following values via POST /pet
+    And a pet is created with the following values via POST /pet
         | Field  | Value             |
         | Id     | {run_id_int}12348 |
         | Name   | Mushu             |
         | Status | sold              |
-    Then the response status should be '409'
+    Then the response should have '409' status code
     When the created pet named 'Norbert' is retrieved via GET /pet/{id}
     Then the response should have '200' status code and the returned pet should be exactly
         | Field  | Value             |
@@ -177,14 +177,14 @@ Scenario: Creating a pet with an existing ID is rejected and the existing pet is
 
 @bug:BUG-003
 Scenario Outline: An invalid pet is rejected and nothing is stored
-    When pet is created with the following values via POST /pet
+    When a pet is created with the following values via POST /pet
         | Field  | Value            |
         | Id     | {run_id_int}<id> |
         | Name   | <name>           |
         | Status | <status>         |
-    Then the response status should be '405'
+    Then the response should have '405' status code
     When the pet with ID '{run_id_int}<id>' is retrieved via GET /pet/{id}
-    Then the response status should be '404'
+    Then the response should have '404' status code
     And the response message should be 'Pet not found'
 
     Examples:
@@ -195,5 +195,5 @@ Scenario Outline: An invalid pet is rejected and nothing is stored
 @bug:BUG-004
 Scenario: Getting a pet by a non-numeric ID is rejected as an invalid ID
     When the pet with ID 'abc' is retrieved via GET /pet/{id}
-    Then the response status should be '400'
+    Then the response should have '400' status code
     And the response message should be 'Invalid ID supplied'

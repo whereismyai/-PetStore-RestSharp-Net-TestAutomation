@@ -15,11 +15,11 @@ public static class EnvFileHelper
 
     /// <summary>A required setting; throws when it is missing.</summary>
     public static string Get(string key) =>
-        TryGet(key) ?? throw new InvalidOperationException(
+        GetOptional(key) ?? throw new InvalidOperationException(
             $"Setting '{key}' not found. Add it to a .env file (see .env.example) or set it as an environment variable.");
 
     /// <summary>An optional setting; null when it is missing or empty.</summary>
-    public static string? TryGet(string key)
+    public static string? GetOptional(string key)
     {
         var value = Environment.GetEnvironmentVariable(key);
         if (!string.IsNullOrWhiteSpace(value))
@@ -32,9 +32,9 @@ public static class EnvFileHelper
     /// An optional path setting as a full path; null when it is missing. A relative path is resolved against
     /// the folder of the .env file (the current directory when there is no .env file).
     /// </summary>
-    public static string? TryGetPath(string key)
+    public static string? GetOptionalPath(string key)
     {
-        var value = TryGet(key);
+        var value = GetOptional(key);
         return value == null ? null : Path.GetFullPath(value, File.Value.Folder ?? Directory.GetCurrentDirectory());
     }
 

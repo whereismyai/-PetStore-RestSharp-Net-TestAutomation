@@ -12,10 +12,10 @@ public class CommonSteps(LastResponse lastResponse, RunIdInt runIdInt) : BaseSte
     // Read when a step runs, not in the constructor: the When steps set Value after this class is created.
     private RestResponse Response => lastResponse.Value;
 
-    [Then(@"^the response status should be '(\d+)'$")]
-    public void ThenTheResponseStatusShouldBe(int expectedStatus)
+    [Then(@"^the response should have '(\d+)' status code$")]
+    public void ThenTheResponseShouldHaveStatusCode(int statusCode)
     {
-        ((int)Response.StatusCode).Should().Be(expectedStatus, "response body: {0}", Response.Content);
+        ((int)Response.StatusCode).Should().Be(statusCode, "response body: {0}", Response.Content);
     }
 
     // The whole "message":"<expected>" pair must be in the body, e.g. {"code":1,"type":"error","message":"Pet not found"}.

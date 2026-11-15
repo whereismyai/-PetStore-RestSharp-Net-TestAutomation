@@ -9,7 +9,7 @@ public class PetDto
     public long? Id { get; set; }
 
     [JsonPropertyName("category")]
-    public Category? Category { get; set; }
+    public CategoryDto? Category { get; set; }
 
     [JsonPropertyName("name")]
     public string? Name { get; set; }
@@ -18,13 +18,13 @@ public class PetDto
     public List<string> PhotoUrls { get; set; } = new();
 
     [JsonPropertyName("tags")]
-    public List<Tag> Tags { get; set; } = new();
+    public List<TagDto> Tags { get; set; } = new();
 
     [JsonPropertyName("status")]
     public string? Status { get; set; }
 }
 
-public class Category
+public class CategoryDto
 {
     [JsonPropertyName("id")]
     public long? Id { get; set; }
@@ -33,7 +33,7 @@ public class Category
     public string? Name { get; set; }
 }
 
-public class Tag
+public class TagDto
 {
     [JsonPropertyName("id")]
     public long? Id { get; set; }

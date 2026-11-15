@@ -27,7 +27,7 @@ dotnet test                 # restores, builds both projects and runs all scenar
 | `.env` key | Meaning |
 |---|---|
 | `BASE_URL` | API under test (required) |
-| `BUGS_REPO_PATH` | local bug repository folder, relative to the `.env` folder (`bugs`). Optional: without it, bug-linked scenarios run instead of being skipped, and a warning is logged |
+| `BUGS_REPO_PATH` | path of the local bug repository folder, relative to the `.env` folder (`bugs`). Optional: without it, bug-linked scenarios run instead of being skipped, and a warning is logged |
 
 A real environment variable with the same name overrides the file (useful in CI).
 
@@ -89,6 +89,9 @@ Dependencies point one way only: `Tests -> Api -> Core`.
   depending on it.
 - **One log per scenario.** Each request is logged as `METHOD resource -> status` on the test's own thread,
   so every scenario's report contains exactly its own requests and warnings.
+- **Ready for parallel runs, run serially.** All scenario state comes from Reqnroll DI, one instance per
+  scenario, and nothing is static. Parallel runs are not enabled; a trial with NUnit scenario-level
+  parallelism (6 at once) passed with correct per-scenario logs.
 
 ## Coverage
 
@@ -147,9 +150,19 @@ them, so there is nothing to assert), Ids beyond int64 (the client sends a `long
 - Blocked scenarios are skipped, not run as known failures: no side effects on the shared server, but a fix is
   only noticed by running them with the gate off.
 - `{run_id_int}` makes Id collisions on the public server unlikely, not impossible; there are no retries.
-- A pet addressed by name in a step cannot have an apostrophe in its name.
 - Boundary Ids (`1`, int64 maximum - 1) cannot take the `{run_id_int}` prefix, so they can collide with other
   users' pets on the public server. The outline is tagged `@shared-ids` to leave it out of unstable runs.
+
+## Continuous integration
+
+`.github/workflows/ci.yml` runs on every pull request into `main`:
+
+- `build` - restores and builds the solution. It is the required check: a PR that does not build cannot be merged.
+- `test` - runs `dotnet test` after a successful build, with `BASE_URL` and `BUGS_REPO_PATH` set in the workflow.
+  Deliberately not required: the tests hit a shared public server that the PR does not control, so a red
+  test run is shown on the PR but does not block the merge.
+- Skipped scenarios stay visible: each one is a warning annotation, and a grey `Skipped tests` check lists them
+  (only for PRs from this repository; a fork's token cannot create checks).
 
 ## Test report
 
@@ -177,9 +190,8 @@ Every scenario and every bug report was run and verified against the live API.
 
 ## Future to-dos
 
-- **Run the tests in GitHub Actions.** Add a workflow that runs `dotnet test` on every push and pull request,
-  on demand (`workflow_dispatch`), and on a nightly `schedule` (cron) against the public server. `BASE_URL`
-  and `BUGS_REPO_PATH` come from workflow environment variables.
+- **More CI triggers.** The workflow runs on pull requests only; add on demand (`workflow_dispatch`) and a
+  nightly `schedule` (cron) against the public server.
 - **Reporting.** Publish the results of each run: TRX as a build artifact plus a test summary on the
   workflow and PR page. Then add an HTML report (e.g. Allure with its Reqnroll adapter) with each scenario's
   steps and log lines.

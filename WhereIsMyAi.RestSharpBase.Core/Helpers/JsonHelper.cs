@@ -1,3 +1,4 @@
+using System;
 using System.Text.Json;
 using RestSharp;
 
@@ -8,10 +9,18 @@ public static class JsonHelper
 {
     private static readonly JsonSerializerOptions Options = new() { PropertyNameCaseInsensitive = true };
 
-    /// <summary>JSON text -> object; null for empty input.</summary>
-    private static T? Deserialize<T>(string? json) =>
-        string.IsNullOrWhiteSpace(json) ? default : JsonSerializer.Deserialize<T>(json, Options);
-
-    /// <summary>response.Content&lt;MyDto&gt;() - the response body as an object; null for an empty body.</summary>
-    public static T? Content<T>(this RestResponse response) => Deserialize<T>(response.Content);
+    /// <summary>response.ContentAs&lt;MyDto&gt;() - the body as a MyDto; throws with the status and body when it is not one.</summary>
+    public static T ContentAs<T>(this RestResponse response) where T : class
+    {
+        var error = $"Expected a {typeof(T).Name} in the response body (status {(int)response.StatusCode}), got: '{response.Content}'.";
+        try
+        {
+            // Empty body, HTML or an array -> JsonException; the JSON literal null -> null.
+            return JsonSerializer.Deserialize<T>(response.Content ?? "", Options) ?? throw new InvalidOperationException(error);
+        }
+        catch (JsonException ex)
+        {
+            throw new InvalidOperationException(error, ex);
+        }
+    }
 }

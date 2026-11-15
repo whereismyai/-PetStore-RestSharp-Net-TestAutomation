@@ -7,14 +7,9 @@ using RestSharp;
 namespace WhereIsMyAi.RestSharpBase.Core.Http;
 
 /// <summary>Generic RestSharp wrapper. API clients derive from it and expose business methods.</summary>
-public abstract class RestApiClient : IDisposable
+public abstract class RestApiClient(string baseUrl) : IDisposable
 {
-    private readonly RestClient _client;
-
-    protected RestApiClient(string baseUrl)
-    {
-        _client = new RestClient(baseUrl);
-    }
+    private readonly RestClient _client = new(baseUrl);
 
     private static ILogger Log => InternalLogger.Logger;
 

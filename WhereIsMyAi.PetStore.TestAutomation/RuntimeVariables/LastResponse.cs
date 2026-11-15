@@ -3,10 +3,7 @@ using RestSharp;
 
 namespace WhereIsMyAi.PetStore.TestAutomation.RuntimeVariables;
 
-/// <summary>
-/// Runtime context variable: the response of the last request sent in the current scenario.
-/// Used for the verification of the outcome after api request is sent
-/// </summary>
+/// <summary>Runtime variable: the response of the last request sent in the current scenario.</summary>
 public class LastResponse
 {
     private RestResponse? _value;

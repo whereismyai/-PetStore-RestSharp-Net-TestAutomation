@@ -9,20 +9,15 @@ namespace WhereIsMyAi.RestSharpBase.Core.Tms;
 /// <summary>
 /// Decides whether a test linked to a bug must be skipped. A test is linked by a tag "bug:&lt;id&gt;"
 /// (e.g. bug:BUG-001); it is skipped while that bug is Open in the <see cref="BugRepository"/>.
-/// Never skips when it cannot tell: no repository configured, folder missing, or unknown bug id - those
+/// Never skips when it cannot tell: no repository configured, path missing, or unknown bug id - those
 /// cases only log a warning and the test runs. Framework-agnostic: the caller performs the actual skip.
 /// </summary>
-public class BugGate
+/// <param name="bugRepositoryPath">Path of the bug repository folder; null when it is not configured.</param>
+public class BugGate(string? bugRepositoryPath)
 {
     public const string TagPrefix = "bug:";
 
-    private readonly BugRepository? _repository;
-
-    /// <param name="bugRepositoryFolder">Folder of the bug repository; null when it is not configured.</param>
-    public BugGate(string? bugRepositoryFolder)
-    {
-        _repository = bugRepositoryFolder == null ? null : new BugRepository(bugRepositoryFolder);
-    }
+    private readonly BugRepository? _repository = bugRepositoryPath == null ? null : new BugRepository(bugRepositoryPath);
 
     private static ILogger Log => InternalLogger.Logger;
 
@@ -38,8 +33,8 @@ public class BugGate
 
         if (_repository == null || !_repository.IsAvailable)
         {
-            Log.LogWarning("Bug repository folder is unavailable ({Folder}) - test linked to {BugIds} runs instead of being skipped",
-                _repository?.Folder ?? "not configured", string.Join(", ", bugIds));
+            Log.LogWarning("Bug repository path is unavailable ({Path}) - test linked to {BugIds} runs instead of being skipped",
+                _repository?.Path ?? "not configured", string.Join(", ", bugIds));
             return null;
         }
 
@@ -48,7 +43,7 @@ public class BugGate
             var bug = _repository.Find(bugId);
             if (bug == null)
             {
-                Log.LogWarning("Bug {BugId} not found in bug repository {Folder} - test runs", bugId, _repository.Folder);
+                Log.LogWarning("Bug {BugId} not found in bug repository {Path} - test runs", bugId, _repository.Path);
                 continue;
             }
 
