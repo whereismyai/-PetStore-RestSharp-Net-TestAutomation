@@ -1,13 +1,13 @@
 using System.Collections.Generic;
 using WhereIsMyAi.PetStore.TestAutomation.Api.Data;
 using WhereIsMyAi.PetStore.TestAutomation.Api.DTOs;
-using WhereIsMyAi.PetStore.TestAutomation.Api.RequestBuilders.Base;
+using WhereIsMyAi.RestSharpBase.Core.Http;
 using RestSharp;
 
 namespace WhereIsMyAi.PetStore.TestAutomation.Api.RequestBuilders;
 
 /// <summary>Builds and sends /pet requests. WithX sets a field of the body; a field never set is not sent.</summary>
-public class PetRequestBuilder(RestClient client) : PetStoreRequestBuilderBase<PetRequestBuilder>(client)
+public class PetRequestBuilder(PetStoreApiClient client) : RequestBuilderBase<PetRequestBuilder>(client)
 {
     private readonly PetDto _body = new();
 

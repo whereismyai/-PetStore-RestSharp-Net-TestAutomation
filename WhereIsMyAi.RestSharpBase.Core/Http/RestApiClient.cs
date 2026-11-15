@@ -1,76 +1,59 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
-using WhereIsMyAi.RestSharpBase.Core.Helpers;
 using WhereIsMyAi.RestSharpBase.Core.Logger;
 using RestSharp;
 
 namespace WhereIsMyAi.RestSharpBase.Core.Http;
 
 /// <summary>
-/// Thin fluent RestSharp wrapper; request builders derive from it (TBuilder = the derived builder, so WithX calls chain).
-/// The RestClient (auth, timeouts, message handler) and logger are injected; whoever created the RestClient disposes it.
+/// The HTTP client: owns the RestClient (auth, timeouts, message handler) and the logger, adds default headers,
+/// sends requests and logs them. Request builders (<see cref="RequestBuilderBase{TBuilder}"/>) send through it.
+/// Derive to set a base URL and default headers per API.
 /// </summary>
-public abstract class RestApiClient<TBuilder>(RestClient client, ILogger? logger = null)
-    where TBuilder : RestApiClient<TBuilder>
+public class RestApiClient(RestClient client, ILogger? logger = null) : IDisposable
 {
     private readonly ILogger _log = logger ?? InternalLogger.Logger;
-    private readonly List<KeyValuePair<string, string>> _headers = new();
-    private readonly List<KeyValuePair<string, string>> _queryParameters = new();
 
-    /// <summary>Headers every request of this builder sends (e.g. Accept); WithHeader adds to them.</summary>
+    public RestApiClient(string baseUrl, ILogger? logger = null) : this(new RestClient(baseUrl), logger)
+    {
+    }
+
+    /// <summary>Headers added to every request unless the request already sets them (e.g. Accept).</summary>
     protected virtual IEnumerable<KeyValuePair<string, string>> DefaultHeaders => [];
 
-    public TBuilder WithHeader(string name, string value)
+    /// <summary>Sends the request; throws when there is no HTTP response at all.</summary>
+    public RestResponse Send(RestRequest request)
     {
-        _headers.Add(new(name, value));
-        return (TBuilder)this;
-    }
-
-    public TBuilder WithQueryParameter(string name, string value)
-    {
-        _queryParameters.Add(new(name, value));
-        return (TBuilder)this;
-    }
-
-    /// <summary>Sends the request; a body is serialized to JSON without its null properties. Throws when there is no HTTP response at all.</summary>
-    protected RestResponse Send(Method method, string resource, object? body = null)
-    {
-        var request = BuildRequest(method, resource, body);
+        Prepare(request);
         return CheckResponse(request, client.Execute(request));
     }
 
     /// <summary>Async version of <see cref="Send"/>; a cancelled token throws OperationCanceledException.</summary>
-    protected async Task<RestResponse> SendAsync(Method method, string resource, object? body = null,
-        CancellationToken cancellationToken = default)
+    public async Task<RestResponse> SendAsync(RestRequest request, CancellationToken cancellationToken = default)
     {
-        var request = BuildRequest(method, resource, body);
+        Prepare(request);
         var response = await client.ExecuteAsync(request, cancellationToken);
         cancellationToken.ThrowIfCancellationRequested();
         return CheckResponse(request, response);
     }
 
-    private RestRequest BuildRequest(Method method, string resource, object? body)
+    private void Prepare(RestRequest request)
     {
-        var request = new RestRequest(resource, method);
         foreach (var header in DefaultHeaders)
-            request.AddHeader(header.Key, header.Value);
-        foreach (var header in _headers)
-            request.AddHeader(header.Key, header.Value);
-        foreach (var parameter in _queryParameters)
-            request.AddQueryParameter(parameter.Key, parameter.Value);
-
-        if (body != null)
         {
-            var json = JsonHelper.ToJson(body);
-            request.AddStringBody(json, ContentType.Json);
-            _log.LogInformation("{Method} {Resource} request body: {Body}", method, resource, json);
+            var isSet = request.Parameters.Any(parameter => parameter.Type == ParameterType.HttpHeader &&
+                string.Equals(parameter.Name, header.Key, StringComparison.OrdinalIgnoreCase));
+            if (!isSet)
+                request.AddHeader(header.Key, header.Value);
         }
 
-        return request;
+        if (request.Parameters.OfType<BodyParameter>().FirstOrDefault()?.Value is string body)
+            _log.LogInformation("{Method} {Resource} request body: {Body}", request.Method, request.Resource, body);
     }
 
     private RestResponse CheckResponse(RestRequest request, RestResponse response)
@@ -89,5 +72,11 @@ public abstract class RestApiClient<TBuilder>(RestClient client, ILogger? logger
         _log.LogDebug("Response body: {Body}", response.Content);
 
         return response;
+    }
+
+    public void Dispose()
+    {
+        client.Dispose();
+        GC.SuppressFinalize(this);
     }
 }

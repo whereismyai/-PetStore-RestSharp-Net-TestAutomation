@@ -50,8 +50,10 @@ dotnet test WhereIsMyAi.RestSharpBase.Core.Tests  # only the Core unit tests (no
 
 ```
 WhereIsMyAi.RestSharpBase.Core/
-  Http/RestApiClient.cs        fluent RestSharp base for request builders: injected RestClient and logger, WithHeader,
-                               WithQueryParameter, Send / SendAsync; logs every request and its JSON body
+  Http/RestApiClient.cs        HTTP client: owns the RestClient and logger, default headers, Send / SendAsync,
+                               logs every request and its JSON body
+  Http/RequestBuilderBase.cs   fluent base for request builders: WithHeader, WithQueryParameter, JSON body
+                               (nulls left out); sends through an injected RestApiClient
   Http/RestResponseExtensions  VerifyStatus(code), chainable with ToModel<T>()
   Logger/InternalLogger.cs     console logger that writes on the test's own thread
   Extensions/                  StringExtensions (ToLong)
@@ -60,8 +62,9 @@ WhereIsMyAi.RestSharpBase.Core/
 WhereIsMyAi.RestSharpBase.Core.Tests/
   Http/ Helpers/ Tms/          unit tests per Core folder (FakeHttpHandler)
 WhereIsMyAi.PetStore.TestAutomation/
-  Api/                         PetStoreConfig, Data/Endpoints, DTOs/PetDto (Base/IdNameDto),
-                               RequestBuilders/PetRequestBuilder (Base/, Facade/PetStoreRequestBuilderFacade)
+  Api/                         PetStoreConfig, PetStoreApiClient (BASE_URL, default headers), Data/Endpoints,
+                               DTOs/PetDto (Base/IdNameDto), RequestBuilders/PetRequestBuilder,
+                               RequestBuilders/Facade/PetStoreRequestBuilderFacade
   RuntimeVariables/            per-scenario state: CreatedPets, LastResponse, RunIdInt
   Steps/                       BaseStep, CommonSteps, PetSteps (regions: creation, retrieval, deletion, checks)
   Hooks/                       BugHooks, CleanupHooks (after scenario)
