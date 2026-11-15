@@ -13,7 +13,7 @@ public class CommonSteps(LastResponse lastResponse, VariableRepository variables
     // Read when a step runs, not in the constructor: the When steps set Value after this class is created.
     private RestResponse Response => lastResponse.Value;
 
-    [Then(@"the response status should be '(\d+)'")]
+    [Then(@"^the response status should be '(\d+)'$")]
     public void ThenTheResponseStatusShouldBe(int expectedStatus)
     {
         ((int)Response.StatusCode).Should().Be(expectedStatus, "response body: {0}", Response.Content);

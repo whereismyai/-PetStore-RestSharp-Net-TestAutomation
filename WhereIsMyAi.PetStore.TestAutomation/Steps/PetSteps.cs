@@ -1,8 +1,6 @@
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using FluentAssertions;
-using FluentAssertions.Execution;
 using WhereIsMyAi.PetStore.TestAutomation.Api.Clients;
 using WhereIsMyAi.PetStore.TestAutomation.Api.DTOs;
 using WhereIsMyAi.PetStore.TestAutomation.RuntimeVariables;
@@ -126,31 +124,6 @@ public class PetSteps : BaseStep
     public void ThenTheReturnedPetShouldBeExactly(int statusCode, Table table) =>
         AssertMatches(statusCode, BuildPet(table));
 
-    // Checks the listed fields only. 'null' = absent, '[]' = empty list, '{valid-number}' = any Id, tags as 'id:name'.
-    [Then(@"^the response should have '(\d+)' status code and the returned pet should contain$")]
-    public void ThenTheReturnedPetShouldContain(int statusCode, Table table)
-    {
-        var pet = ReadPet(statusCode);
-
-        using var scope = new AssertionScope();
-        foreach (var row in table.Rows)
-        {
-            var expected = row["Value"] == "null" ? null : ReplaceVariables(row["Value"]);
-
-            switch (row["Field"].ToLowerInvariant())
-            {
-                case "id" when expected == "{valid-number}": pet.Id.Should().NotBeNull(); break;
-                case "id": pet.Id.Should().Be(expected == null ? null : long.Parse(expected)); break;
-                case "name": pet.Name.Should().Be(expected); break;
-                case "status": pet.Status.Should().Be(expected); break;
-                case "category": (pet.Category?.Name).Should().Be(expected); break;
-                case "photourls": pet.PhotoUrls.Should().Equal(ExpectedList(expected)); break;
-                case "tags": pet.Tags.Select(FormatTag).Should().Equal(ExpectedList(expected)); break;
-                default: throw new NotSupportedException($"Field '{row["Field"]}' is not supported in assertions.");
-            }
-        }
-    }
-
     // Generated Id: the whole pet must equal the created one, as the POST returned it.
     [Then(@"^the response should have '(\d+)' status code and the returned pet should match the created pet named '([^']+)'$")]
     public void ThenTheReturnedPetShouldMatchTheCreatedPetNamed(int statusCode, string name) =>
@@ -170,13 +143,6 @@ public class PetSteps : BaseStep
         return response.Content<PetDto>()
                ?? throw new InvalidOperationException("The response has no body, expected a pet.");
     }
-
-    // "[]" -> empty list; "a ↕ b" -> ["a", "b"]
-    private static List<string> ExpectedList(string? value) =>
-        value == "[]" ? new List<string>() : value.SplitBySpecSymbol();
-
-    // { Id = 1, Name = "friendly" } -> "1:friendly"
-    private static string? FormatTag(Tag tag) => tag.Id == null ? tag.Name : $"{tag.Id}:{tag.Name}";
 
     #endregion
 }

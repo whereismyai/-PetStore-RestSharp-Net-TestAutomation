@@ -49,7 +49,7 @@ dotnet test --logger "trx"                 # TRX report with each scenario's log
 WhereIsMyAi.RestSharpBase.Core/
   Http/RestApiClient.cs        abstract RestSharp wrapper (Get / Post / Put / Delete), logs every request
   Logger/InternalLogger.cs     console logger that writes on the test's own thread
-  Helpers/                     EnvFile (.env settings), JsonHelper, StringExtensions, VariableReplacer
+  Helpers/                     EnvFile (.env settings), JsonHelper, VariableReplacer
   Tms/                         Bug, BugRepository (bugs/*.md), BugGate (skip decision)
 WhereIsMyAi.PetStore.TestAutomation/
   Api/                         PetStoreConfig, Clients/PetApiClient, DTOs/PetDto
@@ -68,7 +68,7 @@ Dependencies point one way only: `Tests -> Api -> Core`.
 - **Check what is stored, not only the reply.** Every created pet is read back with `GET`. When the Id is known,
   the whole expected pet is written in the feature file and both responses must equal it exactly (all fields,
   category and tag ids, list order). Only pets with generated Ids are compared with the pet the `POST` returned.
-  Names and tags include non-Latin letters, emoji and special characters.
+  Names and tags are in English, Ukrainian, Spanish and French, with emoji and special characters.
   Error replies are checked by their exact message, not only by the status code.
 - **No collisions on a shared server.** Explicit IDs are prefixed with `{run_id_int}`, a random 4-digit
   number generated for each scenario (`{run_id_int}12345` -> `482112345`), in the request, the checks and the
@@ -83,6 +83,9 @@ Dependencies point one way only: `Tests -> Api -> Core`.
   behaviour and carries one tag, `@bug:<id>`. Before it starts, `BugHooks` reads `bugs/<id>.md`: while the bug
   is `Open` the scenario is skipped with the bug's title as the reason. Set `Status: Fixed` and it runs again,
   with no code change. To check for fixes: `BUGS_REPO_PATH=none dotnet test --filter "TestCategory~bug"`.
+  The local bug repository was added in a single prompt, only to show the mechanism. In a real project the
+  hook would read the status of the blocking ticket from Jira instead of `bugs/*.md`, and run or skip the test
+  depending on it.
 - **One log per scenario.** Each request is logged as `METHOD resource -> status` on the test's own thread,
   so every scenario's report contains exactly its own requests and warnings.
 
@@ -97,37 +100,41 @@ bug is open.
 |---|---|---|
 | S1 | A pet can be created with all fields and deleted | Pass |
 | S2 | A pet can be created and deleted with each status value (3 examples) | Pass |
-| S3 | Tags and photo URLs can be reused by several pets and stay after one pet is deleted | Pass |
-| S4 | Pets created without an ID get their own generated IDs | Blocked: [BUG-002](bugs/BUG-002.md) |
-| S5 | Creating a pet with an existing ID is rejected and the existing pet is kept | Blocked: [BUG-001](bugs/BUG-001.md) |
-| S6 | An invalid pet is rejected and nothing is stored (2 examples) | Blocked: [BUG-003](bugs/BUG-003.md) |
-| S7 | Getting a pet by a non-numeric ID is rejected as an invalid ID | Blocked: [BUG-004](bugs/BUG-004.md) |
+| S3 | A pet can be created and deleted with boundary values (4 examples) | Pass |
+| S4 | Tags and photo URLs can be reused by several pets and stay after one pet is deleted | Pass |
+| S5 | Pets created without an ID get their own generated IDs | Blocked: [BUG-002](bugs/BUG-002.md) |
+| S6 | Creating a pet with an existing ID is rejected and the existing pet is kept | Blocked: [BUG-001](bugs/BUG-001.md) |
+| S7 | An invalid pet is rejected and nothing is stored (2 examples) | Blocked: [BUG-003](bugs/BUG-003.md) |
+| S8 | Getting a pet by a non-numeric ID is rejected as an invalid ID | Blocked: [BUG-004](bugs/BUG-004.md) |
 
 ### Coverage matrix
 
 | Input | Equivalence class | Covered by | Status |
 |---|---|---|---|
-| `id` (body) | explicit, new | S1, S2, S3 | Pass |
-| `id` (body) | explicit, already used | S5 | Blocked: BUG-001 |
-| `id` (body) | not sent (generated) | S4 | Blocked: BUG-002 |
-| `id` (path) | stored pet | S1, S2, S3 | Pass |
+| `id` (body) | explicit, new | S1, S2, S4 | Pass |
+| `id` (body) | boundaries: `1`, int64 maximum - 1 | S3 | Pass |
+| `id` (body) | explicit, already used | S6 | Blocked: BUG-001 |
+| `id` (body) | not sent (generated) | S5 | Blocked: BUG-002 |
+| `id` (path) | stored pet | S1-S4 | Pass |
 | `id` (path) | deleted pet | S1, S2 | Pass |
-| `id` (path) | non-numeric | S7 | Blocked: BUG-004 |
-| `name` | Latin, Cyrillic, emoji, digits and brackets | S1, S2, S3 | Pass |
-| `name` | missing (required) | S6 | Blocked: BUG-003 |
+| `id` (path) | non-numeric | S8 | Blocked: BUG-004 |
+| `name` | English, Ukrainian, emoji, digits and brackets | S1, S2, S4 | Pass |
+| `name` | empty, 256 characters | S3 | Pass |
+| `name` | missing (required) | S7 | Blocked: BUG-003 |
 | `status` | `available`, `pending`, `sold` | S2 | Pass |
-| `status` | not sent | S3 | Pass |
-| `status` | not in the enum | S6 | Blocked: BUG-003 |
-| `category` | with id / not sent | S1 / S2, S3 | Pass |
-| `photoUrls` | several / empty / shared by two pets | S1 / S2 / S3 | Pass |
-| `tags` | several with ids and special characters (Cyrillic, accents, `& " % ,`) | S1, S3 | Pass |
-| `tags` | empty / shared by two pets | S2 / S3 | Pass |
-| `DELETE` | existing pet -> `200`, Id as message | S2 (status only: S1, S3) | Pass |
+| `status` | not sent | S3, S4 | Pass |
+| `status` | not in the enum | S7 | Blocked: BUG-003 |
+| `category` | with id / not sent | S1 / S2-S4 | Pass |
+| `photoUrls` | several / empty / shared by two pets | S1 / S2, S3 / S4 | Pass |
+| `tags` | several with ids; Ukrainian, Spanish, French and `& " % ,` | S1, S4 | Pass |
+| `tags` | empty / shared by two pets | S2, S3 / S4 | Pass |
+| `DELETE` | existing pet -> `200`, Id as message | S2, S3 (status only: S1, S4) | Pass |
 | `DELETE` | already deleted -> `404`, empty body | S1 | Pass |
-| `DELETE` | one of two pets sharing a tag and photo URL | S3 | Pass |
+| `DELETE` | one of two pets sharing a tag and photo URL | S4 | Pass |
 
-Not covered: the `api_key` header on `DELETE`, malformed JSON, boundary values (Id `0`, negative, beyond int64,
-very long strings), `PUT /pet` and `GET /pet/findByStatus`.
+Not covered: Id `0` and negative Ids (the API silently replaces them with a generated Id, see BUG-002), Ids
+beyond int64 (the client sends a `long`), the `api_key` header on `DELETE`, malformed JSON, `PUT /pet` and
+`GET /pet/findByStatus`.
 
 ### Trade-offs
 
@@ -139,6 +146,8 @@ very long strings), `PUT /pet` and `GET /pet/findByStatus`.
   only noticed by running them with the gate off.
 - `{run_id_int}` makes Id collisions on the public server unlikely, not impossible; there are no retries.
 - A pet addressed by name in a step cannot have an apostrophe in its name.
+- Boundary Ids (`1`, int64 maximum - 1) cannot take the `{run_id_int}` prefix, so they can collide with other
+  users' pets on the public server.
 
 ## Test report
 
@@ -146,7 +155,7 @@ Run on 2026-11-15 against `https://petstore.swagger.io/v2`:
 
 | Total | Passed | Failed | Skipped (open bug) | Duration |
 |---|---|---|---|---|
-| 10 | 5 | 0 | 5 | ~10 s |
+| 14 | 9 | 0 | 5 | ~10 s |
 
 All 5 skipped scenarios were also run on purpose (with `BUGS_REPO_PATH` pointing to a missing folder). Each
 failed exactly as its bug describes:

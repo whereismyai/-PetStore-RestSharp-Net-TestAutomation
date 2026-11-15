@@ -13,12 +13,7 @@ namespace WhereIsMyAi.PetStore.TestAutomation.RuntimeVariables;
 /// </summary>
 public class CreatedPets
 {
-    public CreatedPets()
-    {
-        Value = new List<PetDto>();
-    }
-
-    public List<PetDto> Value { get; set; }
+    public List<PetDto> Value { get; } = new();
 
     /// <summary>The most recently created pet ("the last created pet").</summary>
     public PetDto Last =>

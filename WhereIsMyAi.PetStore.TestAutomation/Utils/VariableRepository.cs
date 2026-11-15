@@ -13,14 +13,14 @@ namespace WhereIsMyAi.PetStore.TestAutomation.Utils;
 /// </summary>
 public class VariableRepository
 {
-    private readonly IReadOnlyDictionary<string, Func<string?, string>> _variables;
+    private readonly IReadOnlyDictionary<string, Func<string>> _variables;
 
     public VariableRepository(RunIdInt runIdInt)
     {
-        _variables = new Dictionary<string, Func<string?, string>>
+        _variables = new Dictionary<string, Func<string>>
         {
             // {run_id_int} - random 4-digit number generated once per scenario
-            ["run_id_int"] = _ => runIdInt.Value.ToString(),
+            ["run_id_int"] = () => runIdInt.Value.ToString(),
         };
     }
 

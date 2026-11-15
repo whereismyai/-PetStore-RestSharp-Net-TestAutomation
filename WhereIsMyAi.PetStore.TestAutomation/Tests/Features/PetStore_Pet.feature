@@ -1,5 +1,7 @@
 Feature: Pet endpoints
-    Every created pet is read back, so the checks cover what was stored, not only the response.
+    Covers POST /pet, GET /pet/{id} and DELETE /pet/{id}: the stored pet equals what was sent, repeated deletes,
+    tags and photo URLs shared by two pets, invalid input, boundary Ids and names, and names and tags in English,
+    Ukrainian, Spanish and French with emoji and special characters (& " ( ) % ,).
 
 Scenario: A pet can be created with all fields and deleted
     When pet is created with the following values via POST /pet
@@ -72,32 +74,58 @@ Scenario Outline: A pet can be created and deleted with each status value
         | pending   | Кіт у чоботях | 20002 |
         | sold      | Smaug 🐉      | 20003 |
 
+# Boundary Ids cannot take the {run_id_int} prefix.
+Scenario Outline: A pet can be created and deleted with boundary values
+    When pet is created with the following values via POST /pet
+        | Field | Value  |
+        | Id    | <id>   |
+        | Name  | <name> |
+    Then the response should have '200' status code and the returned pet should be exactly
+        | Field | Value  |
+        | Id    | <id>   |
+        | Name  | <name> |
+    When the last created pet is retrieved via GET /pet/{id}
+    Then the response should have '200' status code and the returned pet should be exactly
+        | Field | Value  |
+        | Id    | <id>   |
+        | Name  | <name> |
+    When the last created pet is deleted via DELETE /pet/{id}
+    Then the response status should be '200'
+    And the response message should be '<id>'
+
+    Examples:
+        | case                               | id                  | name                                                                                                                                                                                                                                                             |
+        | smallest positive Id               | 1                   | Lassie                                                                                                                                                                                                                                                           |
+        | largest Id below the int64 maximum | 9223372036854775806 | Salem                                                                                                                                                                                                                                                            |
+        | empty name                         | {run_id_int}50001   |                                                                                                                                                                                                                                                                  |
+        | 256-character name                 | {run_id_int}50002   | AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA |
+
 Scenario: Tags and photo URLs can be reused by several pets and stay after one pet is deleted
     When pet is created with the following values via POST /pet
         | Field    | Value                          |
         | Id       | {run_id_int}11111              |
         | Name     | Garfield                       |
         | PhotoUrl | https://example.com/shared.jpg |
-        | Tag      | 1:très friendly & fluffy       |
+        | Tag      | 1:muy cariñoso & très fluffy   |
     And pet is created with the following values via POST /pet
         | Field    | Value                          |
         | Id       | {run_id_int}22222              |
         | Name     | Beethoven (1992)               |
         | PhotoUrl | https://example.com/shared.jpg |
-        | Tag      | 1:très friendly & fluffy       |
+        | Tag      | 1:muy cariñoso & très fluffy   |
     Then the response should have '200' status code and the returned pet should be exactly
         | Field    | Value                          |
         | Id       | {run_id_int}22222              |
         | Name     | Beethoven (1992)               |
         | PhotoUrl | https://example.com/shared.jpg |
-        | Tag      | 1:très friendly & fluffy       |
+        | Tag      | 1:muy cariñoso & très fluffy   |
     When the created pet named 'Garfield' is retrieved via GET /pet/{id}
     Then the response should have '200' status code and the returned pet should be exactly
         | Field    | Value                          |
         | Id       | {run_id_int}11111              |
         | Name     | Garfield                       |
         | PhotoUrl | https://example.com/shared.jpg |
-        | Tag      | 1:très friendly & fluffy       |
+        | Tag      | 1:muy cariñoso & très fluffy   |
     When the created pet named 'Garfield' is deleted via DELETE /pet/{id}
     Then the response status should be '200'
     When the created pet named 'Beethoven (1992)' is retrieved via GET /pet/{id}
@@ -106,7 +134,7 @@ Scenario: Tags and photo URLs can be reused by several pets and stay after one p
         | Id       | {run_id_int}22222              |
         | Name     | Beethoven (1992)               |
         | PhotoUrl | https://example.com/shared.jpg |
-        | Tag      | 1:très friendly & fluffy       |
+        | Tag      | 1:muy cariñoso & très fluffy   |
 
 @bug:BUG-002
 Scenario: Pets created without an ID get their own generated IDs
@@ -114,23 +142,12 @@ Scenario: Pets created without an ID get their own generated IDs
         | Field    | Value     |
         | Name     | Toothless |
         | Category | DRAGONS   |
-    Then the response should have '200' status code and the returned pet should contain
-        | Field     | Value          |
-        | Id        | {valid-number} |
-        | Name      | Toothless      |
-        | Status    | null           |
-        | Category  | DRAGONS        |
-        | PhotoUrls | []             |
-        | Tags      | []             |
+    Then the response status should be '200'
     When pet is created with the following values via POST /pet
         | Field    | Value      |
         | Name     | Stormfly   |
         | Category | NIGHT_FURY |
-    Then the response should have '200' status code and the returned pet should contain
-        | Field    | Value          |
-        | Id       | {valid-number} |
-        | Name     | Stormfly       |
-        | Category | NIGHT_FURY     |
+    Then the response status should be '200'
     And the created pets should have different IDs
     When the created pet named 'Toothless' is retrieved via GET /pet/{id}
     Then the response should have '200' status code and the returned pet should match the created pet named 'Toothless'

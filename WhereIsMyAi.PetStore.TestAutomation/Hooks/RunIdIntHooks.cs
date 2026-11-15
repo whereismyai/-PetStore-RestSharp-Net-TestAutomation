@@ -15,7 +15,7 @@ public class RunIdIntHooks
     {
         _runIdInt = runIdInt;
     }
-    
+
     [BeforeScenario]
     public void GenerateRunIdInt()
     {
