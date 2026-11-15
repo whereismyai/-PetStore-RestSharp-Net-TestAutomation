@@ -22,6 +22,8 @@ jobs:
           dotnet-version: 10.0.x
       - run: dotnet restore
       - run: dotnet build --no-restore -c Release
+      - name: Core unit tests (no network, part of the required check)
+        run: dotnet test WhereIsMyAi.RestSharpBase.Core.Tests --no-build -c Release
 
   test:
     needs: build
@@ -34,11 +36,11 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 10.0.x
-      - run: dotnet test -c Release --logger trx --results-directory TestResults
+      - run: dotnet test WhereIsMyAi.PetStore.TestAutomation -c Release --logger trx --results-directory TestResults
       - name: Collect skipped tests
         if: always()
         run: |
-          grep -h 'outcome="NotExecuted"' TestResults/*.trx | sed -E 's/.*testName="([^"]*)".*/\1/' > skipped.txt || true
+          grep -h 'outcome="NotExecuted"' TestResults/*.trx | sed -E 's/.*testName="([^"]*)".*/\1/; s/&quot;/"/g; s/&amp;/\&/g' > skipped.txt || true
           while read -r name; do echo "::warning title=Skipped (open bug)::$name"; done < skipped.txt
       - name: Grey "Skipped tests" check
         # fork PRs get a read-only token and cannot create checks; the warnings above still show the skips

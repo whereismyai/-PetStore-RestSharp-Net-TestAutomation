@@ -10,10 +10,10 @@ namespace WhereIsMyAi.RestSharpBase.Core.Tms;
 /// The file holds "Key: value" lines (a Markdown list item "- Key: value" works too); the repository reads
 /// Id, Status and Title, everything else is free text for people:
 /// <code>
-/// # BUG-001: POST /pet with an existing Id overwrites the pet
+/// # BUG-001: Saving a record twice creates a duplicate
 /// - Id: BUG-001
 /// - Status: Open
-/// - Title: POST /pet with an existing Id overwrites the pet
+/// - Title: Saving a record twice creates a duplicate
 /// </code>
 /// </summary>
 public class BugRepository(string path)

@@ -24,10 +24,4 @@ public class CommonSteps(LastResponse lastResponse, RunIdInt runIdInt) : BaseSte
     {
         Response.Content.Should().Contain($"\"message\":\"{ReplaceVariables(expectedMessage)}\"");
     }
-
-    [Then(@"^the response body should be empty$")]
-    public void ThenTheResponseBodyShouldBeEmpty()
-    {
-        Response.Content.Should().BeNullOrEmpty();
-    }
 }

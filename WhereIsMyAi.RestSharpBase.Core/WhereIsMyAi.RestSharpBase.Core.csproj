@@ -14,4 +14,8 @@
     <PackageReference Include="RestSharp" Version="114.1.0" />
   </ItemGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="WhereIsMyAi.RestSharpBase.Core.Tests" />
+  </ItemGroup>
+
 </Project>
