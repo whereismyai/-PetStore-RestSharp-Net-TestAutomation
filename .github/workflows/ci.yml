@@ -40,7 +40,7 @@ jobs:
       - name: Collect skipped tests
         if: always()
         run: |
-          grep -h 'outcome="NotExecuted"' TestResults/*.trx | sed -E 's/.*testName="([^"]*)".*/\1/' > skipped.txt || true
+          grep -h 'outcome="NotExecuted"' TestResults/*.trx | sed -E 's/.*testName="([^"]*)".*/\1/; s/&quot;/"/g; s/&amp;/\&/g' > skipped.txt || true
           while read -r name; do echo "::warning title=Skipped (open bug)::$name"; done < skipped.txt
       - name: Grey "Skipped tests" check
         # fork PRs get a read-only token and cannot create checks; the warnings above still show the skips
