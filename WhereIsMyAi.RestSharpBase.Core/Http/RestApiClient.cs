@@ -12,6 +12,7 @@ namespace WhereIsMyAi.RestSharpBase.Core.Http;
 /// Generic RestSharp wrapper. API clients derive from it and expose business methods.
 /// Configure without changing this class: pass your own RestClient (auth, default headers, timeouts) and logger,
 /// and send anything the helpers do not cover (headers, query parameters, other bodies) through Execute.
+/// Takes ownership of the RestClient: Dispose disposes it, so give each API client its own.
 /// </summary>
 public abstract class RestApiClient(RestClient client, ILogger? logger = null) : IDisposable
 {
@@ -33,7 +34,10 @@ public abstract class RestApiClient(RestClient client, ILogger? logger = null) :
     protected RestResponse Delete(string resource) =>
         Execute(new RestRequest(resource, Method.Delete));
 
-    /// <summary>Sends any request and logs it; throws when there is no HTTP response at all.</summary>
+    /// <summary>
+    /// Sends any request and logs it; throws when there is no HTTP response at all. Add a JSON body as
+    /// AddStringBody(JsonHelper.ToJson(body), ContentType.Json), like Post/Put, so it is serialized and logged the same way.
+    /// </summary>
     protected RestResponse Execute(RestRequest request)
     {
         if (request.Parameters.OfType<BodyParameter>().FirstOrDefault()?.Value is string body)

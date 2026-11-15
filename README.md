@@ -34,7 +34,7 @@ A real environment variable with the same name overrides the file (useful in CI)
 ```bash
 dotnet test --filter "TestCategory!~bug"          # leave out every bug-linked scenario
 dotnet test --filter "TestCategory~bug"           # only bug-linked scenarios
-dotnet test --filter "TestCategory!=shared-ids"   # leave out boundary Ids other users may also use
+dotnet test --filter "TestCategory!=shared-ids"   # leave out the boundary Id 1, which other users may also use
 dotnet test --filter "Name~Deleted"               # scenarios by (part of) their name
 dotnet test --logger "trx"                        # TRX report with each scenario's log lines
 ```
@@ -50,7 +50,8 @@ dotnet test --logger "trx"                        # TRX report with each scenari
 ```
 WhereIsMyAi.RestSharpBase.Core/
   Http/RestApiClient.cs        abstract RestSharp wrapper: takes your RestClient (auth, headers, timeouts) and logger;
-                               Get / Post / Put / Delete, Execute(request) for anything else; logs every request
+                               Get / Post / Put / Delete, Execute(request) for anything else; logs every request;
+                               disposes the RestClient it was given
   Logger/InternalLogger.cs     console logger that writes on the test's own thread
   Extensions/                  StringExtensions (ToLong)
   Helpers/                     EnvFileHelper (.env settings), JsonHelper
@@ -73,7 +74,9 @@ Dependencies point one way only: `Tests -> Api -> Core`.
   the whole expected pet is written in the feature file and both responses must equal it exactly (all fields,
   category and tag ids, list order). Pets with generated Ids are checked against the table too, except for the
   Id - never against an earlier response, which could repeat a wrong value. The DTO is all-nullable, so a
-  missing required field (`id`, `name`, `photoUrls`) fails by name instead of becoming a default like `[]`.
+  missing `id`, `name`, `photoUrls` or `tags` fails by name instead of becoming a default like `[]`.
+  Every pet is sent with its required fields (`name`, `photoUrls`) unless that field is what the scenario tests,
+  so an invalid-input scenario has exactly one thing wrong.
   Names and tags are in English, Ukrainian, Spanish and French, with emoji and special characters.
   Error replies are checked by their exact message, not only by the status code.
 - **No collisions on a shared server.** Explicit IDs are prefixed with `{run_id_int}`, a random 4-digit
@@ -113,7 +116,7 @@ bug is open.
 | S4 | Tags and photo URLs can be reused by several pets and stay after one pet is deleted | Pass |
 | S5 | Pets created without an ID get their own generated IDs | Pass ([BUG-002](Bugs/BUG-002.md) fixed) |
 | S6 | Creating a pet with an existing ID is rejected and the existing pet is kept | Blocked: [BUG-001](Bugs/BUG-001.md) |
-| S7 | An invalid pet is rejected and nothing is stored (2 examples) | Blocked: [BUG-003](Bugs/BUG-003.md) |
+| S7 | An invalid pet is rejected and nothing is stored (3 examples) | Blocked: [BUG-003](Bugs/BUG-003.md) |
 | S8 | Getting a pet by a non-numeric ID is rejected as an invalid ID | Blocked: [BUG-004](Bugs/BUG-004.md) |
 
 ### Coverage matrix
@@ -121,7 +124,7 @@ bug is open.
 | Input | Equivalence class | Covered by | Status |
 |---|---|---|---|
 | `id` (body) | explicit, new | S1, S2, S4 | Pass |
-| `id` (body) | boundaries: `1`, int64 maximum - 1 | S3 | Pass |
+| `id` (body) | boundaries: `1`, 18 digits (above 2^53) | S3 | Pass |
 | `id` (body) | explicit, already used | S6 | Blocked: BUG-001 |
 | `id` (body) | not sent (generated) | S5 | Pass |
 | `id` (path) | stored pet | S1-S4 | Pass |
@@ -135,15 +138,16 @@ bug is open.
 | `status` | not sent | S3, S4 | Pass |
 | `status` | not in the enum | S7 | Blocked: BUG-003 |
 | `category` | with id / not sent | S1 / S2-S4 | Pass |
-| `photoUrls` | several / empty / shared by two pets | S1 / S2, S3 / S4 | Pass |
+| `photoUrls` | one / several / shared by two pets | S2, S3, S5 / S1 / S4 | Pass |
+| `photoUrls` | missing (required) | S7 | Blocked: BUG-003 |
 | `tags` | several with ids; Ukrainian, Spanish, French and `& " % ,` | S1, S4 | Pass |
-| `tags` | empty / shared by two pets | S2, S3 / S4 | Pass |
+| `tags` | not sent / shared by two pets | S2, S3, S5 / S4 | Pass |
 | `DELETE` | existing pet -> `200`, Id as message | S2, S3 (status only: S1, S4) | Pass |
 | `DELETE` | already deleted -> `404`, empty body | S1 | Pass |
 | `DELETE` | one of two pets sharing a tag and photo URL | S4 | Pass |
 
 Not covered: Id `0` and negative Ids (the API replaces them with a generated Id; the spec defines no rule for
-them, so there is nothing to assert), Ids beyond int64 (the client sends a `long`), the `api_key` header on `DELETE`, malformed JSON, `PUT /pet` and
+them, so there is nothing to assert), Ids beyond int64 (the client sends a `long`), an empty `photoUrls` list, the `api_key` header on `DELETE`, malformed JSON, `PUT /pet` and
 `GET /pet/findByStatus`.
 
 ### Trade-offs
@@ -155,8 +159,10 @@ them, so there is nothing to assert), Ids beyond int64 (the client sends a `long
 - Blocked scenarios are skipped, not run as known failures: no side effects on the shared server, but a fix is
   only noticed by running them with the gate off.
 - `{run_id_int}` makes Id collisions on the public server unlikely, not impossible; there are no retries.
-- Boundary Ids (`1`, int64 maximum - 1) cannot take the `{run_id_int}` prefix, so they can collide with other
-  users' pets on the public server. The outline is tagged `@shared-ids` to leave it out of unstable runs.
+- The boundary Id `1` cannot take the `{run_id_int}` prefix, so it can collide with other users' pets on the
+  public server. The outline is tagged `@shared-ids` to leave it out of unstable runs.
+- The upper boundary is an 18-digit Id, not int64 maximum - 1: generated Ids look like the highest Id + 1, so a
+  pet near the maximum would make every user's generated Ids overflow and collide (the BUG-002 symptom).
 
 ## Continuous integration
 
@@ -176,17 +182,17 @@ Run on 2026-11-15 against `https://petstore.swagger.io/v2`:
 
 | Total | Passed | Failed | Skipped (open bug) | Duration |
 |---|---|---|---|---|
-| 14 | 10 | 0 | 4 | ~10 s |
+| 15 | 10 | 0 | 5 | ~10 s |
 
-Plus 34 Core unit tests, all passing (~0.1 s).
+Plus 35 Core unit tests, all passing (~0.1 s).
 
-All 4 skipped scenarios were also run on purpose (with `BUGS_REPO_PATH` pointing to a missing folder). Each
+All 5 skipped scenarios were also run on purpose (with `BUGS_REPO_PATH` pointing to a missing folder). Each
 failed exactly as its bug describes:
 
 | Bug | Expected | Actual |
 |---|---|---|
 | [BUG-001](Bugs/BUG-001.md) | `409`, existing pet unchanged | `200`, the existing pet is silently overwritten |
-| [BUG-003](Bugs/BUG-003.md) | `405 Invalid input`, nothing stored | `200`, a pet without `name` or with `status: flying` is stored |
+| [BUG-003](Bugs/BUG-003.md) | `405 Invalid input`, nothing stored | `200`, a pet without `name`, without `photoUrls` or with `status: flying` is stored |
 | [BUG-004](Bugs/BUG-004.md) | `400 Invalid ID supplied` | `404` with `java.lang.NumberFormatException ...` as the message |
 
 [BUG-002](Bugs/BUG-002.md) (every pet created without an Id got `9223372036854775807`) was fixed on the server

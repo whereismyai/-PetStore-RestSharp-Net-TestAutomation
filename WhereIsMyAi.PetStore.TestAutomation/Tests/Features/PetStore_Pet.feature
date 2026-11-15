@@ -46,21 +46,24 @@ Scenario: A pet can be created with all fields and deleted
 
 Scenario Outline: A pet can be created and deleted with each status value
     When a pet is created with the following values via POST /pet
-        | Field  | Value            |
-        | Id     | {run_id_int}<id> |
-        | Name   | <name>           |
-        | Status | <status>         |
+        | Field    | Value                       |
+        | Id       | {run_id_int}<id>            |
+        | Name     | <name>                      |
+        | Status   | <status>                    |
+        | PhotoUrl | https://example.com/pet.jpg |
     Then the response should have '200' status code and the returned pet should be exactly
-        | Field  | Value            |
-        | Id     | {run_id_int}<id> |
-        | Name   | <name>           |
-        | Status | <status>         |
+        | Field    | Value                       |
+        | Id       | {run_id_int}<id>            |
+        | Name     | <name>                      |
+        | Status   | <status>                    |
+        | PhotoUrl | https://example.com/pet.jpg |
     When the last created pet is retrieved via GET /pet/{id}
     Then the response should have '200' status code and the returned pet should be exactly
-        | Field  | Value            |
-        | Id     | {run_id_int}<id> |
-        | Name   | <name>           |
-        | Status | <status>         |
+        | Field    | Value                       |
+        | Id       | {run_id_int}<id>            |
+        | Name     | <name>                      |
+        | Status   | <status>                    |
+        | PhotoUrl | https://example.com/pet.jpg |
     When the last created pet is deleted via DELETE /pet/{id}
     Then the response should have '200' status code
     And the response message should be '{run_id_int}<id>'
@@ -74,32 +77,35 @@ Scenario Outline: A pet can be created and deleted with each status value
         | pending   | Кіт у чоботях | 20002 |
         | sold      | Smaug 🐉      | 20003 |
 
-# Boundary Ids cannot take the {run_id_int} prefix and can be shared with other users of the public server.
+# Id 1 cannot take the {run_id_int} prefix and can be shared with other users of the public server.
 @shared-ids
 Scenario Outline: A pet can be created and deleted with boundary values
     When a pet is created with the following values via POST /pet
-        | Field | Value  |
-        | Id    | <id>   |
-        | Name  | <name> |
+        | Field    | Value                       |
+        | Id       | <id>                        |
+        | Name     | <name>                      |
+        | PhotoUrl | https://example.com/pet.jpg |
     Then the response should have '200' status code and the returned pet should be exactly
-        | Field | Value  |
-        | Id    | <id>   |
-        | Name  | <name> |
+        | Field    | Value                       |
+        | Id       | <id>                        |
+        | Name     | <name>                      |
+        | PhotoUrl | https://example.com/pet.jpg |
     When the last created pet is retrieved via GET /pet/{id}
     Then the response should have '200' status code and the returned pet should be exactly
-        | Field | Value  |
-        | Id    | <id>   |
-        | Name  | <name> |
+        | Field    | Value                       |
+        | Id       | <id>                        |
+        | Name     | <name>                      |
+        | PhotoUrl | https://example.com/pet.jpg |
     When the last created pet is deleted via DELETE /pet/{id}
     Then the response should have '200' status code
     And the response message should be '<id>'
 
     Examples:
-        | case                               | id                  | name                                                                                                                                                                                                                                                             |
-        | smallest positive Id               | 1                   | Lassie                                                                                                                                                                                                                                                           |
-        | largest Id below the int64 maximum | 9223372036854775806 | Salem                                                                                                                                                                                                                                                            |
-        | empty name                         | {run_id_int}50001   |                                                                                                                                                                                                                                                                  |
-        | 256-character name                 | {run_id_int}50002   | AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA |
+        | case                               | id                         | name                                                                                                                                                                                                                                                             |
+        | smallest positive Id               | 1                          | Lassie                                                                                                                                                                                                                                                           |
+        | 18-digit Id (above 2^53)           | {run_id_int}00000000000001 | Salem                                                                                                                                                                                                                                                            |
+        | empty name                         | {run_id_int}50001          |                                                                                                                                                                                                                                                                  |
+        | 256-character name                 | {run_id_int}50002          | AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA |
 
 Scenario: Tags and photo URLs can be reused by several pets and stay after one pet is deleted
     When a pet is created with the following values via POST /pet
@@ -140,69 +146,80 @@ Scenario: Tags and photo URLs can be reused by several pets and stay after one p
 @bug:BUG-002
 Scenario: Pets created without an ID get their own generated IDs
     When a pet is created with the following values via POST /pet
-        | Field    | Value     |
-        | Name     | Toothless |
-        | Category | DRAGONS   |
+        | Field    | Value                       |
+        | Name     | Toothless                   |
+        | Category | DRAGONS                     |
+        | PhotoUrl | https://example.com/pet.jpg |
     Then the response should have '200' status code and the returned pet should be exactly, with a generated Id
-        | Field    | Value     |
-        | Name     | Toothless |
-        | Category | 0:DRAGONS |
+        | Field    | Value                       |
+        | Name     | Toothless                   |
+        | Category | 0:DRAGONS                   |
+        | PhotoUrl | https://example.com/pet.jpg |
     When a pet is created with the following values via POST /pet
-        | Field    | Value      |
-        | Name     | Stormfly   |
-        | Category | NIGHT_FURY |
+        | Field    | Value                       |
+        | Name     | Stormfly                    |
+        | Category | NIGHT_FURY                  |
+        | PhotoUrl | https://example.com/pet.jpg |
     Then the response should have '200' status code and the returned pet should be exactly, with a generated Id
-        | Field    | Value        |
-        | Name     | Stormfly     |
-        | Category | 0:NIGHT_FURY |
+        | Field    | Value                       |
+        | Name     | Stormfly                    |
+        | Category | 0:NIGHT_FURY                |
+        | PhotoUrl | https://example.com/pet.jpg |
     And the created pets should have different IDs
     When the created pet named 'Toothless' is retrieved via GET /pet/{id}
     Then the response should have '200' status code and the returned pet should be exactly, with the Id of the created pet named 'Toothless'
-        | Field    | Value     |
-        | Name     | Toothless |
-        | Category | 0:DRAGONS |
+        | Field    | Value                       |
+        | Name     | Toothless                   |
+        | Category | 0:DRAGONS                   |
+        | PhotoUrl | https://example.com/pet.jpg |
     When the created pet named 'Stormfly' is retrieved via GET /pet/{id}
     Then the response should have '200' status code and the returned pet should be exactly, with the Id of the created pet named 'Stormfly'
-        | Field    | Value        |
-        | Name     | Stormfly     |
-        | Category | 0:NIGHT_FURY |
+        | Field    | Value                       |
+        | Name     | Stormfly                    |
+        | Category | 0:NIGHT_FURY                |
+        | PhotoUrl | https://example.com/pet.jpg |
 
 @bug:BUG-001
 Scenario: Creating a pet with an existing ID is rejected and the existing pet is kept
     When a pet is created with the following values via POST /pet
-        | Field  | Value             |
-        | Id     | {run_id_int}12348 |
-        | Name   | Norbert           |
-        | Status | available         |
+        | Field    | Value                       |
+        | Id       | {run_id_int}12348           |
+        | Name     | Norbert                     |
+        | Status   | available                   |
+        | PhotoUrl | https://example.com/pet.jpg |
     And a pet is created with the following values via POST /pet
-        | Field  | Value             |
-        | Id     | {run_id_int}12348 |
-        | Name   | Mushu             |
-        | Status | sold              |
+        | Field    | Value                       |
+        | Id       | {run_id_int}12348           |
+        | Name     | Mushu                       |
+        | Status   | sold                        |
+        | PhotoUrl | https://example.com/pet.jpg |
     Then the response should have '409' status code
     When the created pet named 'Norbert' is retrieved via GET /pet/{id}
     Then the response should have '200' status code and the returned pet should be exactly
-        | Field  | Value             |
-        | Id     | {run_id_int}12348 |
-        | Name   | Norbert           |
-        | Status | available         |
+        | Field    | Value                       |
+        | Id       | {run_id_int}12348           |
+        | Name     | Norbert                     |
+        | Status   | available                   |
+        | PhotoUrl | https://example.com/pet.jpg |
 
 @bug:BUG-003
 Scenario Outline: An invalid pet is rejected and nothing is stored
     When a pet is created with the following values via POST /pet
-        | Field  | Value            |
-        | Id     | {run_id_int}<id> |
-        | Name   | <name>           |
-        | Status | <status>         |
+        | Field    | Value                       |
+        | Id       | {run_id_int}<id>            |
+        | Name     | <name>                      |
+        | Status   | <status>                    |
+        | PhotoUrl | <photoUrl>                  |
     Then the response should have '405' status code
     When the pet with ID '{run_id_int}<id>' is retrieved via GET /pet/{id}
     Then the response should have '404' status code
     And the response message should be 'Pet not found'
 
     Examples:
-        | case                  | name | status    | id    |
-        | missing required name | null | available | 30001 |
-        | status not in enum    | Rex  | flying    | 30002 |
+        | case                       | name | status    | photoUrl                    | id    |
+        | missing required name      | null | available | https://example.com/pet.jpg | 30001 |
+        | status not in enum         | Rex  | flying    | https://example.com/pet.jpg | 30002 |
+        | missing required photoUrls | Rex  | available | null                        | 30003 |
 
 @bug:BUG-004
 Scenario: Getting a pet by a non-numeric ID is rejected as an invalid ID

@@ -52,9 +52,9 @@ public class JsonHelperTests
     }
 
     [Test]
-    public void ToJson_LeavesNullPropertiesOut()
+    public void ToJson_LeavesNullPropertiesOut_CamelCase()
     {
-        JsonHelper.ToJson(new ItemDto { Id = 1, Name = "" }).Should().Be("""{"Id":1,"Name":""}""");
+        JsonHelper.ToJson(new ItemDto { Id = 1, Name = "" }).Should().Be("""{"id":1,"name":""}""");
     }
 
     private static RestResponse Response(string? body) =>

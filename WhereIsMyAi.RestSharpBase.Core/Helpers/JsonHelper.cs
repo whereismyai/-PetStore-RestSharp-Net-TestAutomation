@@ -11,6 +11,7 @@ public static class JsonHelper
     private static readonly JsonSerializerOptions Options = new()
     {
         PropertyNameCaseInsensitive = true,
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase, // properties without [JsonPropertyName] are sent as "name", not "Name"
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull, // an unset (null) property is not sent
     };
 

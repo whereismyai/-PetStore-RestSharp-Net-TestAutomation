@@ -119,6 +119,17 @@ public class RestApiClientTests
             .And.Contain(message => message.Contains("/items -> 200"));
     }
 
+    [Test]
+    public void Dispose_DisposesTheInjectedRestClient()
+    {
+        var handler = new FakeHttpHandler();
+        var client = CreateClient(handler);
+
+        client.Dispose();
+
+        handler.Disposed.Should().BeTrue("RestApiClient owns the RestClient it was given");
+    }
+
     private static TestClient CreateClient(FakeHttpHandler handler, ILogger? logger = null) =>
         new(new RestClient(new RestClientOptions(BaseUrl) { ConfigureMessageHandler = _ => handler }), logger);
 

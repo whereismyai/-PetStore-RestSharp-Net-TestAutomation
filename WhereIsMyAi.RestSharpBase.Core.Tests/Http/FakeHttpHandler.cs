@@ -11,6 +11,13 @@ public sealed class FakeHttpHandler(Func<HttpResponseMessage>? respond = null) :
 {
     public HttpRequestMessage? Request { get; private set; }
     public string? RequestBody { get; private set; }
+    public bool Disposed { get; private set; }
+
+    protected override void Dispose(bool disposing)
+    {
+        Disposed = true;
+        base.Dispose(disposing);
+    }
 
     protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
     {
