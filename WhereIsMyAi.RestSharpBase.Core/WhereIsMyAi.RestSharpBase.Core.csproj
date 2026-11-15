@@ -14,7 +14,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <InternalsVisibleTo Include="WhereIsMyAi.RestSharpBase.Core.Tests" />
+    <InternalsVisibleTo Include="WhereIsMyAi.RestSharpBase.Core.UnitTests" />
   </ItemGroup>
 
 </Project>

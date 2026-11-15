@@ -23,7 +23,7 @@ jobs:
       - run: dotnet restore
       - run: dotnet build --no-restore -c Release
       - name: Core unit tests (no network, part of the required check)
-        run: dotnet test WhereIsMyAi.RestSharpBase.Core.Tests --no-build -c Release
+        run: dotnet test WhereIsMyAi.RestSharpBase.Core.UnitTests --no-build -c Release
 
   test:
     needs: build

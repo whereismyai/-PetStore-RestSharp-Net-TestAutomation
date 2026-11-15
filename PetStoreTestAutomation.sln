@@ -7,7 +7,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WhereIsMyAi.RestSharpBase.C
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WhereIsMyAi.PetStore.TestAutomation", "WhereIsMyAi.PetStore.TestAutomation\WhereIsMyAi.PetStore.TestAutomation.csproj", "{06786087-8C12-4684-B184-AE3040CDBE7E}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WhereIsMyAi.RestSharpBase.Core.Tests", "WhereIsMyAi.RestSharpBase.Core.Tests\WhereIsMyAi.RestSharpBase.Core.Tests.csproj", "{11DEFC4B-A605-4237-B73E-9F5413E624AD}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WhereIsMyAi.RestSharpBase.Core.UnitTests", "WhereIsMyAi.RestSharpBase.Core.UnitTests\WhereIsMyAi.RestSharpBase.Core.UnitTests.csproj", "{11DEFC4B-A605-4237-B73E-9F5413E624AD}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

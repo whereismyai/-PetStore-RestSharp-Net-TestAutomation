@@ -5,7 +5,7 @@ using FluentAssertions;
 using NUnit.Framework;
 using WhereIsMyAi.RestSharpBase.Core.Tms;
 
-namespace WhereIsMyAi.RestSharpBase.Core.Tests.Tms;
+namespace WhereIsMyAi.RestSharpBase.Core.UnitTests.Tms;
 
 /// <summary>Checks this repository's Bugs/*.md, copied next to the tests by the .csproj, so a bad Status fails the required build.</summary>
 public class BugFilesTests

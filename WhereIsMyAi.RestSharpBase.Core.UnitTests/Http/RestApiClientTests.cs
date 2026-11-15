@@ -9,7 +9,7 @@ using NUnit.Framework;
 using RestSharp;
 using WhereIsMyAi.RestSharpBase.Core.Http;
 
-namespace WhereIsMyAi.RestSharpBase.Core.Tests.Http;
+namespace WhereIsMyAi.RestSharpBase.Core.UnitTests.Http;
 
 public class RestApiClientTests
 {

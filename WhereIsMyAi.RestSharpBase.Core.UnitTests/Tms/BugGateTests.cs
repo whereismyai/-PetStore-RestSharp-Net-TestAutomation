@@ -3,7 +3,7 @@ using FluentAssertions;
 using NUnit.Framework;
 using WhereIsMyAi.RestSharpBase.Core.Tms;
 
-namespace WhereIsMyAi.RestSharpBase.Core.Tests.Tms;
+namespace WhereIsMyAi.RestSharpBase.Core.UnitTests.Tms;
 
 public class BugGateTests
 {
