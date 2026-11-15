@@ -1,7 +1,6 @@
 name: CI
 
 on:
-  push:
   pull_request:
     branches: [main]
 
@@ -28,10 +27,7 @@ jobs:
         with:
           dotnet-version: 10.0.x
       - run: dotnet test -c Release --logger trx --results-directory TestResults
-      - name: List skipped tests in the run summary
+      - name: Show skipped tests as warnings
         if: always()
         run: |
-          {
-            echo "### Skipped tests (open bugs)"
-            grep -h 'outcome="NotExecuted"' TestResults/*.trx | sed -E 's/.*testName="([^"]*)".*/- \1/' || true
-          } >> "$GITHUB_STEP_SUMMARY"
+          grep -h 'outcome="NotExecuted"' TestResults/*.trx | sed -E 's/.*testName="([^"]*)".*/::warning title=Skipped (open bug)::\1/' || true
