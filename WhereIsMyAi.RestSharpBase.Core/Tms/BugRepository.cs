@@ -16,29 +16,25 @@ namespace WhereIsMyAi.RestSharpBase.Core.Tms;
 /// - Title: POST /pet with an existing Id overwrites the pet
 /// </code>
 /// </summary>
-public class BugRepository
+public class BugRepository(string path)
 {
     private static readonly Regex Field = new(@"^\s*[-*]?\s*(?<key>Id|Status|Title)\s*:\s*(?<value>.+?)\s*$",
         RegexOptions.IgnoreCase | RegexOptions.Multiline);
 
-    public BugRepository(string folder)
-    {
-        Folder = folder;
-    }
+    /// <summary>Path of the bug repository folder.</summary>
+    public string Path { get; } = path;
 
-    public string Folder { get; }
-
-    public bool IsAvailable => Directory.Exists(Folder);
+    public bool IsAvailable => Directory.Exists(Path);
 
     /// <summary>The bug with this id, or null when the repository has no file for it.</summary>
     public Bug? Find(string id)
     {
-        var path = Path.Combine(Folder, id + ".md");
-        if (!File.Exists(path))
+        var file = System.IO.Path.Combine(Path, id + ".md"); // System.IO: Path is the property here
+        if (!File.Exists(file))
             return null;
 
         var fields = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-        foreach (Match match in Field.Matches(File.ReadAllText(path)))
+        foreach (Match match in Field.Matches(File.ReadAllText(file)))
             fields.TryAdd(match.Groups["key"].Value, match.Groups["value"].Value);
 
         return new Bug(

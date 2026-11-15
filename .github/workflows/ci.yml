@@ -4,6 +4,10 @@ on:
   pull_request:
     branches: [main]
 
+concurrency: # a new push to a PR cancels that PR's older run
+  group: ci-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
   checks: write # for the grey "Skipped tests" check
@@ -37,7 +41,8 @@ jobs:
           grep -h 'outcome="NotExecuted"' TestResults/*.trx | sed -E 's/.*testName="([^"]*)".*/\1/' > skipped.txt || true
           while read -r name; do echo "::warning title=Skipped (open bug)::$name"; done < skipped.txt
       - name: Grey "Skipped tests" check
-        if: always()
+        # fork PRs get a read-only token and cannot create checks; the warnings above still show the skips
+        if: always() && github.event.pull_request.head.repo.full_name == github.repository
         uses: actions/github-script@v7
         with:
           script: |

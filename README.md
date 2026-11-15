@@ -27,7 +27,7 @@ dotnet test                 # restores, builds both projects and runs all scenar
 | `.env` key | Meaning |
 |---|---|
 | `BASE_URL` | API under test (required) |
-| `BUGS_REPO_PATH` | local bug repository folder, relative to the `.env` folder (`bugs`). Optional: without it, bug-linked scenarios run instead of being skipped, and a warning is logged |
+| `BUGS_REPO_PATH` | path of the local bug repository folder, relative to the `.env` folder (`bugs`). Optional: without it, bug-linked scenarios run instead of being skipped, and a warning is logged |
 
 A real environment variable with the same name overrides the file (useful in CI).
 
@@ -89,6 +89,9 @@ Dependencies point one way only: `Tests -> Api -> Core`.
   depending on it.
 - **One log per scenario.** Each request is logged as `METHOD resource -> status` on the test's own thread,
   so every scenario's report contains exactly its own requests and warnings.
+- **Ready for parallel runs, run serially.** All scenario state comes from Reqnroll DI, one instance per
+  scenario, and nothing is static. Parallel runs are not enabled; a trial with NUnit scenario-level
+  parallelism (6 at once) passed with correct per-scenario logs.
 
 ## Coverage
 
@@ -103,7 +106,7 @@ bug is open.
 | S2 | A pet can be created and deleted with each status value (3 examples) | Pass |
 | S3 | A pet can be created and deleted with boundary values (4 examples) | Pass |
 | S4 | Tags and photo URLs can be reused by several pets and stay after one pet is deleted | Pass |
-| S5 | Pets created without an ID get their own generated IDs | Blocked: [BUG-002](bugs/BUG-002.md) |
+| S5 | Pets created without an ID get their own generated IDs | Pass ([BUG-002](bugs/BUG-002.md) fixed) |
 | S6 | Creating a pet with an existing ID is rejected and the existing pet is kept | Blocked: [BUG-001](bugs/BUG-001.md) |
 | S7 | An invalid pet is rejected and nothing is stored (2 examples) | Blocked: [BUG-003](bugs/BUG-003.md) |
 | S8 | Getting a pet by a non-numeric ID is rejected as an invalid ID | Blocked: [BUG-004](bugs/BUG-004.md) |
@@ -115,7 +118,7 @@ bug is open.
 | `id` (body) | explicit, new | S1, S2, S4 | Pass |
 | `id` (body) | boundaries: `1`, int64 maximum - 1 | S3 | Pass |
 | `id` (body) | explicit, already used | S6 | Blocked: BUG-001 |
-| `id` (body) | not sent (generated) | S5 | Blocked: BUG-002 |
+| `id` (body) | not sent (generated) | S5 | Pass |
 | `id` (path) | stored pet | S1-S4 | Pass |
 | `id` (path) | deleted pet | S1, S2 | Pass |
 | `id` (path) | non-numeric | S8 | Blocked: BUG-004 |
@@ -147,9 +150,19 @@ them, so there is nothing to assert), Ids beyond int64 (the client sends a `long
 - Blocked scenarios are skipped, not run as known failures: no side effects on the shared server, but a fix is
   only noticed by running them with the gate off.
 - `{run_id_int}` makes Id collisions on the public server unlikely, not impossible; there are no retries.
-- A pet addressed by name in a step cannot have an apostrophe in its name.
 - Boundary Ids (`1`, int64 maximum - 1) cannot take the `{run_id_int}` prefix, so they can collide with other
   users' pets on the public server. The outline is tagged `@shared-ids` to leave it out of unstable runs.
+
+## Continuous integration
+
+`.github/workflows/ci.yml` runs on every pull request into `main`:
+
+- `build` - restores and builds the solution. It is the required check: a PR that does not build cannot be merged.
+- `test` - runs `dotnet test` after a successful build, with `BASE_URL` and `BUGS_REPO_PATH` set in the workflow.
+  Deliberately not required: the tests hit a shared public server that the PR does not control, so a red
+  test run is shown on the PR but does not block the merge.
+- Skipped scenarios stay visible: each one is a warning annotation, and a grey `Skipped tests` check lists them
+  (only for PRs from this repository; a fork's token cannot create checks).
 
 ## Test report
 
@@ -157,17 +170,19 @@ Run on 2026-11-15 against `https://petstore.swagger.io/v2`:
 
 | Total | Passed | Failed | Skipped (open bug) | Duration |
 |---|---|---|---|---|
-| 14 | 9 | 0 | 5 | ~10 s |
+| 14 | 10 | 0 | 4 | ~10 s |
 
-All 5 skipped scenarios were also run on purpose (with `BUGS_REPO_PATH` pointing to a missing folder). Each
+All 4 skipped scenarios were also run on purpose (with `BUGS_REPO_PATH` pointing to a missing folder). Each
 failed exactly as its bug describes:
 
 | Bug | Expected | Actual |
 |---|---|---|
 | [BUG-001](bugs/BUG-001.md) | `409`, existing pet unchanged | `200`, the existing pet is silently overwritten |
-| [BUG-002](bugs/BUG-002.md) | a distinct generated Id per pet | every pet gets `9223372036854775807` and overwrites the previous one |
 | [BUG-003](bugs/BUG-003.md) | `405 Invalid input`, nothing stored | `200`, a pet without `name` or with `status: flying` is stored |
 | [BUG-004](bugs/BUG-004.md) | `400 Invalid ID supplied` | `404` with `java.lang.NumberFormatException ...` as the message |
+
+[BUG-002](bugs/BUG-002.md) (every pet created without an Id got `9223372036854775807`) was fixed on the server
+on 2026-11-15. Its status is now `Fixed`, so S5 runs again with no code change, and it passes.
 
 ## AI assistance
 
@@ -177,9 +192,8 @@ Every scenario and every bug report was run and verified against the live API.
 
 ## Future to-dos
 
-- **Run the tests in GitHub Actions.** Add a workflow that runs `dotnet test` on every push and pull request,
-  on demand (`workflow_dispatch`), and on a nightly `schedule` (cron) against the public server. `BASE_URL`
-  and `BUGS_REPO_PATH` come from workflow environment variables.
+- **More CI triggers.** The workflow runs on pull requests only; add on demand (`workflow_dispatch`) and a
+  nightly `schedule` (cron) against the public server.
 - **Reporting.** Publish the results of each run: TRX as a build artifact plus a test summary on the
   workflow and PR page. Then add an HTML report (e.g. Allure with its Reqnroll adapter) with each scenario's
   steps and log lines.

@@ -7,5 +7,5 @@ public static class PetStoreConfig
     public static string BaseUrl => EnvFileHelper.Get("BASE_URL");
 
     /// <summary>Local bug repository folder (BUGS_REPO_PATH, relative to the .env folder); null when not set.</summary>
-    public static string? BugRepositoryPath => EnvFileHelper.TryGetPath("BUGS_REPO_PATH");
+    public static string? BugRepositoryPath => EnvFileHelper.GetOptionalPath("BUGS_REPO_PATH");
 }
