@@ -122,17 +122,17 @@ one open bug: they assert the expected behaviour and are skipped while the bug i
 
 | # | Scenario | Result |
 |---|---|---|
-| S1 | A pet can be created with all fields and deleted | Pass |
+| S1 | A pet can be created with all fields and deleted only once | Pass |
 | S2 | A pet can be created and deleted with each status value (3 examples) | Pass |
-| S3 | A pet can be created and deleted with boundary values (4 examples) | Pass |
-| S4 | Tags and photo URLs can be reused by several pets and stay after one pet is deleted | Pass |
+| S3 | A pet can be created and deleted with boundary Ids and name lengths (4 examples) | Pass |
+| S4 | Tags and photo URLs can be shared by two pets and stay after one pet is deleted | Pass |
 | S5 | Pets created without an ID get their own generated IDs | Pass ([BUG-002](Bugs/BUG-002.md) fixed) |
 | S6 | Creating a pet with an existing ID is rejected with 409 Conflict | Blocked: [BUG-001](Bugs/BUG-001.md) |
 | S7 | Creating a pet with an existing ID keeps the existing pet | Blocked: [BUG-001](Bugs/BUG-001.md) |
-| S8 | An invalid pet is rejected and nothing is stored (3 examples) | Blocked: [BUG-003](Bugs/BUG-003.md) |
-| S9 | Getting a pet by an invalid ID is rejected as an invalid ID (2 examples) | Blocked: [BUG-004](Bugs/BUG-004.md) |
-| S10 | Deleting a pet by an invalid ID is rejected as an invalid ID (2 examples) | Blocked: [BUG-004](Bugs/BUG-004.md) |
-| S11 | Deleting a pet that does not exist is answered with Pet not found | Blocked: [BUG-005](Bugs/BUG-005.md) |
+| S8 | An invalid pet is rejected with 405 Invalid input and nothing is stored (3 examples) | Blocked: [BUG-003](Bugs/BUG-003.md) |
+| S9 | Getting a pet by an invalid ID is rejected with 400 Invalid ID supplied (2 examples) | Blocked: [BUG-004](Bugs/BUG-004.md) |
+| S10 | Deleting a pet by an invalid ID is rejected with 400 Invalid ID supplied (2 examples) | Blocked: [BUG-004](Bugs/BUG-004.md) |
+| S11 | Deleting a pet that does not exist is answered with 404 Pet not found | Blocked: [BUG-005](Bugs/BUG-005.md) |
 
 ### Coverage matrix
 

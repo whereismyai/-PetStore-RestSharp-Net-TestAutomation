@@ -1,9 +1,10 @@
 Feature: Pet endpoints
-    Covers POST /pet, GET /pet/{id} and DELETE /pet/{id}: the stored pet equals what was sent, repeated deletes,
-    tags and photo URLs shared by two pets, invalid input and invalid Ids, boundary Ids and names, and names and tags in English,
-    Ukrainian, Spanish and French with emoji and special characters (& " ( ) % ,).
+    Covers POST /pet, GET /pet/{id} and DELETE /pet/{id}: the stored pet equals what was sent, generated and
+    duplicate Ids, repeated deletes, tags and photo URLs shared by two pets, invalid input, invalid and missing Ids,
+    boundary Ids and name lengths; names in English and Ukrainian with emoji, tags also in Spanish and French with
+    special characters (& " ( ) % ,).
 
-Scenario: A pet can be created with all fields and deleted
+Scenario: A pet can be created with all fields and deleted only once
     When a pet is created with the following values via POST /pet
         | Field    | Value                        |
         | Id       | {run_id_int}12345            |
@@ -76,7 +77,7 @@ Scenario Outline: A pet can be created and deleted with each status value
         | pending   | Кіт у чоботях | 20002 |
         | sold      | Smaug 🐉      | 20003 |
 
-Scenario Outline: A pet can be created and deleted with boundary values
+Scenario Outline: A pet can be created and deleted with boundary Ids and name lengths
     When a pet is created with the following values via POST /pet
         | Field    | Value                       |
         | Id       | <id>                        |
@@ -109,7 +110,7 @@ Scenario Outline: A pet can be created and deleted with boundary values
         | case                 | id | name   |
         | smallest positive Id | 1  | Lassie |
 
-Scenario: Tags and photo URLs can be reused by several pets and stay after one pet is deleted
+Scenario: Tags and photo URLs can be shared by two pets and stay after one pet is deleted
     When a pet is created with the following values via POST /pet
         | Field    | Value                          |
         | Id       | {run_id_int}11111              |
@@ -227,7 +228,7 @@ Scenario: Creating a pet with an existing ID keeps the existing pet
         | PhotoUrl | https://example.com/pet.jpg |
 
 @bug:BUG-003
-Scenario Outline: An invalid pet is rejected and nothing is stored
+Scenario Outline: An invalid pet is rejected with 405 Invalid input and nothing is stored
     When a pet is created with the following values via POST /pet
         | Field    | Value                       |
         | Id       | {run_id_int}<id>            |
@@ -247,7 +248,7 @@ Scenario Outline: An invalid pet is rejected and nothing is stored
         | missing required photoUrls | Rex  | available | null                        | 30003 |
 
 @bug:BUG-004
-Scenario Outline: Getting a pet by an invalid ID is rejected as an invalid ID
+Scenario Outline: Getting a pet by an invalid ID is rejected with 400 Invalid ID supplied
     When the pet with ID '<id>' is retrieved via GET /pet/{id}
     Then the response should have '400' status code
     And the response message should be 'Invalid ID supplied'
@@ -258,7 +259,7 @@ Scenario Outline: Getting a pet by an invalid ID is rejected as an invalid ID
         | int64 maximum + 1 | 9223372036854775808 |
 
 @bug:BUG-004
-Scenario Outline: Deleting a pet by an invalid ID is rejected as an invalid ID
+Scenario Outline: Deleting a pet by an invalid ID is rejected with 400 Invalid ID supplied
     When the pet with ID '<id>' is deleted via DELETE /pet/{id}
     Then the response should have '400' status code
     And the response message should be 'Invalid ID supplied'
@@ -269,7 +270,7 @@ Scenario Outline: Deleting a pet by an invalid ID is rejected as an invalid ID
         | int64 maximum + 1 | 9223372036854775808 |
 
 @bug:BUG-005
-Scenario: Deleting a pet that does not exist is answered with Pet not found
+Scenario: Deleting a pet that does not exist is answered with 404 Pet not found
     When the pet with ID '{run_id_int}99999' is deleted via DELETE /pet/{id}
     Then the response should have '404' status code
     And the response message should be 'Pet not found'
