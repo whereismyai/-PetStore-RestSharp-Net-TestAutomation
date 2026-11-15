@@ -1,23 +1,24 @@
-using WhereIsMyAi.PetStore.TestAutomation.Utils;
+using WhereIsMyAi.PetStore.TestAutomation.RuntimeVariables;
 
 namespace WhereIsMyAi.PetStore.TestAutomation.Steps;
 
 /// <summary>
-/// Base for step classes: gives access to scenario state. Contains no step definitions -
+/// Base for step classes. Contains no step definitions -
 /// Reqnroll would register inherited steps once per subclass and make them ambiguous.
 /// </summary>
 public abstract class BaseStep
 {
-    private readonly VariableRepository _variables;
+    private readonly RunIdInt _runIdInt;
 
-    protected BaseStep(VariableRepository variables)
+    protected BaseStep(RunIdInt runIdInt)
     {
-        _variables = variables;
+        _runIdInt = runIdInt;
     }
 
     /// <summary>
     /// Call on every string value that comes from the scenario before it is used in a request or an
-    /// assertion: replaces variable placeholders ({run_id_int}, ...) with their values.
+    /// assertion: replaces variables with their values; "{run_id_int}12345" -> "482112345".
     /// </summary>
-    protected string ReplaceVariables(string value) => _variables.Replace(value);
+    protected string ReplaceVariables(string value) =>
+        value.Replace("{run_id_int}", _runIdInt.Value.ToString());
 }
