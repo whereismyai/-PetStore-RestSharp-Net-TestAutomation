@@ -45,13 +45,14 @@ dotnet test WhereIsMyAi.RestSharpBase.Core.Tests  # only the Core unit tests (no
 | Project | What it contains |
 |---|---|
 | `WhereIsMyAi.RestSharpBase.Core` | Project-agnostic base: RestSharp client wrapper, logger, helpers and a small local TMS. It knows nothing about PetStore or any test framework, so other API test projects can reuse it. |
-| `WhereIsMyAi.PetStore.TestAutomation` | Everything PetStore-specific: API client, DTOs, step definitions, hooks, scenario variables, feature files. References Core. |
+| `WhereIsMyAi.PetStore.TestAutomation` | Everything PetStore-specific: request builders and their facade, DTOs, endpoint URLs, step definitions, hooks, scenario variables, feature files. References Core. |
 | `WhereIsMyAi.RestSharpBase.Core.Tests` | Deterministic unit tests for Core: request construction, transport failure, cancellation, malformed/empty JSON, `.env` vs environment-variable precedence, bug-gate decisions. A fake HTTP handler and temp folders, no network. |
 
 ```
 WhereIsMyAi.RestSharpBase.Core/
-  Http/RestApiClient.cs        abstract RestSharp wrapper: injectable RestClient and logger, Get / Post / Put / Delete,
-                               Execute / ExecuteAsync for custom requests; logs every request and its JSON body
+  Http/RestApiClient.cs        fluent RestSharp base for request builders: injected RestClient and logger, WithHeader,
+                               WithQueryParameter, Send / SendAsync; logs every request and its JSON body
+  Http/RestResponseExtensions  VerifyStatus(code), chainable with ToModel<T>()
   Logger/InternalLogger.cs     console logger that writes on the test's own thread
   Extensions/                  StringExtensions (ToLong)
   Helpers/                     EnvFileHelper (.env settings), JsonHelper
@@ -59,7 +60,8 @@ WhereIsMyAi.RestSharpBase.Core/
 WhereIsMyAi.RestSharpBase.Core.Tests/
   Http/ Helpers/ Tms/          unit tests per Core folder (FakeHttpHandler)
 WhereIsMyAi.PetStore.TestAutomation/
-  Api/                         PetStoreConfig, Clients/PetApiClient, DTOs/PetDto
+  Api/                         PetStoreConfig, Data/Endpoints, DTOs/PetDto (Base/IdNameDto),
+                               RequestBuilders/PetRequestBuilder (Base/, Facade/PetStoreRequestBuilderFacade)
   RuntimeVariables/            per-scenario state: CreatedPets, LastResponse, RunIdInt
   Steps/                       BaseStep, CommonSteps, PetSteps (regions: creation, retrieval, deletion, checks)
   Hooks/                       BugHooks, CleanupHooks (after scenario)
@@ -74,10 +76,10 @@ Dependencies point one way only: `Tests -> Api -> Core`.
 - **Check what is stored, not only the reply.** Every created pet is read back with `GET`. When the Id is known,
   the whole expected pet is written in the feature file and both responses must equal it exactly (all fields,
   category and tag ids, list order). Pets with generated Ids are checked the same way against the table, except
-  for the Id - never against an earlier response, which could repeat a wrong value. Each pet response is also
-  checked as raw JSON: `id` is a number, `photoUrls` and `tags` are arrays, sent fields have the right JSON type.
-- **Missing, null and empty are different requests.** The request body is a `JsonObject` built from the table:
-  a blank value leaves the property out, `null` sends `null`, `{empty}` sends `""`. The JSON is logged as sent.
+  for the Id - never against an earlier response, which could repeat a wrong value. DTOs are all-nullable, so a
+  field missing from a response fails the check instead of turning into a default (e.g. an empty list).
+- **Builders, not hand-made JSON.** Steps use one facade: `petStore.Pet().WithName(..).WithTag(..).SendCreatePet()`.
+  The builder holds the body DTO; an unset field is not sent, `{empty}` in a table sends `""`. The JSON is logged as sent.
   Names and tags are in English, Ukrainian, Spanish and French, with emoji and special characters.
   Error replies are checked by their exact message, not only by the status code.
 - **No collisions on a shared server.** Explicit IDs are prefixed with `{run_id_int}`, a random 4-digit
@@ -117,7 +119,7 @@ bug is open.
 | S4 | Tags and photo URLs can be reused by several pets and stay after one pet is deleted | Pass |
 | S5 | Pets created without an ID get their own generated IDs | Pass ([BUG-002](Bugs/BUG-002.md) fixed) |
 | S6 | Creating a pet with an existing ID is rejected and the existing pet is kept | Blocked: [BUG-001](Bugs/BUG-001.md) |
-| S7 | An invalid pet is rejected and nothing is stored (3 examples) | Blocked: [BUG-003](Bugs/BUG-003.md) |
+| S7 | An invalid pet is rejected and nothing is stored (2 examples) | Blocked: [BUG-003](Bugs/BUG-003.md) |
 | S8 | Getting a pet by a non-numeric ID is rejected as an invalid ID | Blocked: [BUG-004](Bugs/BUG-004.md) |
 
 ### Coverage matrix
@@ -135,7 +137,6 @@ bug is open.
 | `name` | empty string (accepted: the spec sets no minimum length) | S3 | Pass |
 | `name` | 256 characters | S3 | Pass |
 | `name` | missing (required) | S7 | Blocked: BUG-003 |
-| `name` | `null` (required) | S7 | Blocked: BUG-003 |
 | `status` | `available`, `pending`, `sold` | S2 | Pass |
 | `status` | not sent | S3, S4 | Pass |
 | `status` | not in the enum | S7 | Blocked: BUG-003 |
@@ -181,17 +182,17 @@ Run on 2026-11-15 against `https://petstore.swagger.io/v2`:
 
 | Total | Passed | Failed | Skipped (open bug) | Duration |
 |---|---|---|---|---|
-| 15 | 10 | 0 | 5 | ~11 s |
+| 14 | 10 | 0 | 4 | ~10 s |
 
-Plus 33 Core unit tests, all passing (~0.1 s).
+Plus 37 Core unit tests, all passing (~0.1 s).
 
-All 5 skipped scenarios were also run on purpose (with `BUGS_REPO_PATH` pointing to a missing folder). Each
+All 4 skipped scenarios were also run on purpose (with `BUGS_REPO_PATH` pointing to a missing folder). Each
 failed exactly as its bug describes:
 
 | Bug | Expected | Actual |
 |---|---|---|
 | [BUG-001](Bugs/BUG-001.md) | `409`, existing pet unchanged | `200`, the existing pet is silently overwritten |
-| [BUG-003](Bugs/BUG-003.md) | `405 Invalid input`, nothing stored | `200`, a pet without `name`, with `"name": null` or with `status: flying` is stored |
+| [BUG-003](Bugs/BUG-003.md) | `405 Invalid input`, nothing stored | `200`, a pet without `name` or with `status: flying` is stored |
 | [BUG-004](Bugs/BUG-004.md) | `400 Invalid ID supplied` | `404` with `java.lang.NumberFormatException ...` as the message |
 
 [BUG-002](Bugs/BUG-002.md) (every pet created without an Id got `9223372036854775807`) was fixed on the server

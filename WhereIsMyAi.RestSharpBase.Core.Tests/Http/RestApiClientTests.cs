@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Net;
 using System.Net.Http;
-using System.Text.Json.Nodes;
+using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
 using FluentAssertions;
@@ -17,88 +17,99 @@ public class RestApiClientTests
 {
     private const string BaseUrl = "http://api.test";
 
-    [Test]
-    public void Post_SendsJsonObjectExactlyAsBuilt_NullKeptAndOmittedPropertyAbsent()
+    private sealed class ItemDto
     {
-        var handler = new FakeHttpHandler();
-        using var client = CreateClient(handler);
-
-        client.CallPost("/pet", new JsonObject { ["id"] = 1, ["name"] = null, ["tags"] = new JsonArray() });
-
-        handler.Request!.Method.Should().Be(HttpMethod.Post);
-        handler.Request.RequestUri.Should().Be(new Uri($"{BaseUrl}/pet"));
-        handler.Request.Content!.Headers.ContentType!.MediaType.Should().Be("application/json");
-        handler.RequestBody.Should().Be("""{"id":1,"name":null,"tags":[]}""");
+        [JsonPropertyName("id")] public long? Id { get; set; }
+        [JsonPropertyName("name")] public string? Name { get; set; }
+        [JsonPropertyName("tags")] public List<string>? Tags { get; set; }
     }
 
     [Test]
-    public void Get_SendsNoBody()
+    public void Send_BodyLeavesUnsetPropertiesOutAndKeepsEmptyValues()
     {
         var handler = new FakeHttpHandler();
-        using var client = CreateClient(handler);
 
-        client.CallGet("/pet/42");
+        CreateBuilder(handler).SendPost("/items", new ItemDto { Id = 1, Name = "", Tags = [] });
+
+        handler.Request!.Method.Should().Be(HttpMethod.Post);
+        handler.Request.RequestUri.Should().Be(new Uri($"{BaseUrl}/items"));
+        handler.Request.Content!.Headers.ContentType!.MediaType.Should().Be("application/json");
+        handler.RequestBody.Should().Be("""{"id":1,"name":"","tags":[]}""");
+    }
+
+    [Test]
+    public void Send_BodyWithOnlyUnsetPropertiesIsAnEmptyObject()
+    {
+        var handler = new FakeHttpHandler();
+
+        CreateBuilder(handler).SendPost("/items", new ItemDto());
+
+        handler.RequestBody.Should().Be("{}");
+    }
+
+    [Test]
+    public void Send_WithoutBodySendsNoContent()
+    {
+        var handler = new FakeHttpHandler();
+
+        CreateBuilder(handler).SendGet("/items/42");
 
         handler.Request!.Method.Should().Be(HttpMethod.Get);
-        handler.Request.RequestUri.Should().Be(new Uri($"{BaseUrl}/pet/42"));
+        handler.Request.RequestUri.Should().Be(new Uri($"{BaseUrl}/items/42"));
         handler.RequestBody.Should().BeNull();
     }
 
     [Test]
-    public void Execute_SendsCustomHeadersAndQueryParameters()
+    public void WithHeaderAndWithQueryParameter_ChainAndAreSentWithTheDefaultHeaders()
     {
         var handler = new FakeHttpHandler();
-        using var client = CreateClient(handler);
 
-        client.CallExecute(new RestRequest("/pet/findByStatus").AddHeader("X-Api-Key", "secret").AddQueryParameter("status", "sold"));
+        CreateBuilder(handler).WithHeader("X-Api-Key", "secret").WithQueryParameter("status", "sold").SendGet("/items");
 
-        handler.Request!.RequestUri.Should().Be(new Uri($"{BaseUrl}/pet/findByStatus?status=sold"));
+        handler.Request!.RequestUri.Should().Be(new Uri($"{BaseUrl}/items?status=sold"));
         handler.Request.Headers.GetValues("X-Api-Key").Should().ContainSingle().Which.Should().Be("secret");
+        handler.Request.Headers.GetValues("X-Default").Should().ContainSingle().Which.Should().Be("on");
     }
 
     [Test]
-    public void Execute_ReturnsErrorStatusCodesWithoutThrowing()
+    public void Send_ReturnsErrorStatusCodesWithoutThrowing()
     {
         var handler = new FakeHttpHandler(() => new HttpResponseMessage(HttpStatusCode.NotFound) { Content = new StringContent("missing") });
-        using var client = CreateClient(handler);
 
-        var response = client.CallGet("/pet/1");
+        var response = CreateBuilder(handler).SendGet("/items/1");
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
         response.Content.Should().Be("missing");
     }
 
     [Test]
-    public void Execute_ThrowsWhenThereIsNoHttpResponse()
+    public void Send_ThrowsWhenThereIsNoHttpResponse()
     {
         var handler = new FakeHttpHandler(() => throw new HttpRequestException("connection refused"));
-        using var client = CreateClient(handler);
 
-        var act = () => client.CallGet("/pet/1");
+        var act = () => CreateBuilder(handler).SendGet("/items/1");
 
-        act.Should().Throw<HttpRequestException>().WithMessage("*/pet/1 got no response*");
+        act.Should().Throw<HttpRequestException>().WithMessage("*/items/1 got no response*");
     }
 
     [Test]
-    public async Task ExecuteAsync_ReturnsTheResponse()
+    public async Task SendAsync_ReturnsTheResponse()
     {
         var handler = new FakeHttpHandler(() => new HttpResponseMessage(HttpStatusCode.Created) { Content = new StringContent("{}") });
-        using var client = CreateClient(handler);
 
-        var response = await client.CallExecuteAsync(new RestRequest("/pet", Method.Post), CancellationToken.None);
+        var response = await CreateBuilder(handler).SendPostAsync("/items", new ItemDto { Id = 1 }, CancellationToken.None);
 
         response.StatusCode.Should().Be(HttpStatusCode.Created);
-        handler.Request!.Method.Should().Be(HttpMethod.Post);
+        handler.RequestBody.Should().Be("""{"id":1}""");
     }
 
     [Test]
-    public async Task ExecuteAsync_ThrowsWhenCancelled()
+    public async Task SendAsync_ThrowsWhenCancelled()
     {
-        using var client = CreateClient(new FakeHttpHandler());
         using var cancelled = new CancellationTokenSource();
         await cancelled.CancelAsync();
 
-        var act = () => client.CallExecuteAsync(new RestRequest("/pet"), cancelled.Token);
+        var act = () => CreateBuilder(new FakeHttpHandler()).SendPostAsync("/items", new ItemDto(), cancelled.Token);
 
         await act.Should().ThrowAsync<OperationCanceledException>();
     }
@@ -107,22 +118,43 @@ public class RestApiClientTests
     public void InjectedLogger_ReceivesTheRequestBodyAsSent()
     {
         var logger = new ListLogger();
-        using var client = CreateClient(new FakeHttpHandler(), logger);
 
-        client.CallPost("/pet", new JsonObject { ["name"] = "" });
+        CreateBuilder(new FakeHttpHandler(), logger).SendPost("/items", new ItemDto { Name = "" });
 
         logger.Messages.Should().Contain(message => message.Contains("""{"name":""}"""));
     }
 
-    private static TestClient CreateClient(FakeHttpHandler handler, ILogger? logger = null) =>
+    [Test]
+    public void VerifyStatus_ReturnsTheSameResponseOnTheExpectedStatus()
+    {
+        var response = CreateBuilder(new FakeHttpHandler()).SendGet("/items/1");
+
+        response.VerifyStatus(200).Should().BeSameAs(response);
+    }
+
+    [Test]
+    public void VerifyStatus_ThrowsWithStatusAndBodyOnAnotherStatus()
+    {
+        var handler = new FakeHttpHandler(() => new HttpResponseMessage(HttpStatusCode.NotFound) { Content = new StringContent("missing") });
+        var response = CreateBuilder(handler).SendGet("/items/1");
+
+        var act = () => response.VerifyStatus(200);
+
+        act.Should().Throw<InvalidOperationException>().WithMessage("Expected status 200 from Get /items/1, got 404. Body: 'missing'.");
+    }
+
+    private static TestBuilder CreateBuilder(FakeHttpHandler handler, ILogger? logger = null) =>
         new(new RestClient(new RestClientOptions(BaseUrl) { ConfigureMessageHandler = _ => handler }), logger);
 
-    private sealed class TestClient(RestClient client, ILogger? logger) : RestApiClient(client, logger)
+    private sealed class TestBuilder(RestClient client, ILogger? logger) : RestApiClient<TestBuilder>(client, logger)
     {
-        public RestResponse CallGet(string resource) => Get(resource);
-        public RestResponse CallPost(string resource, object body) => Post(resource, body);
-        public RestResponse CallExecute(RestRequest request) => Execute(request);
-        public Task<RestResponse> CallExecuteAsync(RestRequest request, CancellationToken token) => ExecuteAsync(request, token);
+        protected override IEnumerable<KeyValuePair<string, string>> DefaultHeaders => [new("X-Default", "on")];
+
+        public RestResponse SendGet(string resource) => Send(Method.Get, resource);
+        public RestResponse SendPost(string resource, object body) => Send(Method.Post, resource, body);
+
+        public Task<RestResponse> SendPostAsync(string resource, object body, CancellationToken token) =>
+            SendAsync(Method.Post, resource, body, token);
     }
 
     private sealed class ListLogger : ILogger

@@ -1,8 +1,10 @@
 using System.Collections.Generic;
 using System.Text.Json.Serialization;
+using WhereIsMyAi.PetStore.TestAutomation.Api.DTOs.Base;
 
 namespace WhereIsMyAi.PetStore.TestAutomation.Api.DTOs;
 
+/// <summary>Request and response model of a pet. Every field is nullable: null = not sent / not returned.</summary>
 public class PetDto
 {
     [JsonPropertyName("id")]
@@ -15,29 +17,15 @@ public class PetDto
     public string? Name { get; set; }
 
     [JsonPropertyName("photoUrls")]
-    public List<string> PhotoUrls { get; set; } = new();
+    public List<string>? PhotoUrls { get; set; }
 
     [JsonPropertyName("tags")]
-    public List<TagDto> Tags { get; set; } = new();
+    public List<TagDto>? Tags { get; set; }
 
     [JsonPropertyName("status")]
     public string? Status { get; set; }
 }
 
-public class CategoryDto
-{
-    [JsonPropertyName("id")]
-    public long? Id { get; set; }
+public class CategoryDto : IdNameDto;
 
-    [JsonPropertyName("name")]
-    public string? Name { get; set; }
-}
-
-public class TagDto
-{
-    [JsonPropertyName("id")]
-    public long? Id { get; set; }
-
-    [JsonPropertyName("name")]
-    public string? Name { get; set; }
-}
+public class TagDto : IdNameDto;

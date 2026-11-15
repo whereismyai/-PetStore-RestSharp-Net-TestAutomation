@@ -1,6 +1,6 @@
 using System;
+using System.Collections.Generic;
 using System.Net;
-using System.Text.Json;
 using FluentAssertions;
 using NUnit.Framework;
 using RestSharp;
@@ -14,46 +14,47 @@ public class JsonHelperTests
     {
         public long? Id { get; set; }
         public string? Name { get; set; }
+        public List<string>? Tags { get; set; }
     }
 
     [Test]
-    public void ContentAs_ReadsAValidBody_CaseInsensitive()
+    public void ToModel_ReadsAValidBody_CaseInsensitive()
     {
-        var item = Response("""{"ID":7,"name":"Rex"}""").ContentAs<ItemDto>();
+        var item = Response("""{"ID":7,"name":"Rex","tags":[]}""").ToModel<ItemDto>();
 
         item.Id.Should().Be(7);
         item.Name.Should().Be("Rex");
+        item.Tags.Should().BeEmpty();
     }
 
-    [TestCase(null, TestName = "ContentAs_Throws_NoBody")]
-    [TestCase("", TestName = "ContentAs_Throws_EmptyBody")]
-    [TestCase("null", TestName = "ContentAs_Throws_JsonNull")]
-    [TestCase("<html>error</html>", TestName = "ContentAs_Throws_Html")]
-    [TestCase("""{"id":7""", TestName = "ContentAs_Throws_TruncatedJson")]
-    [TestCase("""[{"id":7}]""", TestName = "ContentAs_Throws_Array")]
-    [TestCase("""{"id":"seven"}""", TestName = "ContentAs_Throws_WrongJsonType")]
-    public void ContentAs_ThrowsAReadableErrorWhenTheBodyIsNotTheDto(string? body)
+    [Test]
+    public void ToModel_PropertyMissingFromTheBodyStaysNull()
     {
-        var act = () => Response(body).ContentAs<ItemDto>();
+        var item = Response("""{"id":7}""").ToModel<ItemDto>();
+
+        item.Name.Should().BeNull();
+        item.Tags.Should().BeNull("a missing list must not turn into an empty one");
+    }
+
+    [TestCase(null, TestName = "ToModel_Throws_NoBody")]
+    [TestCase("", TestName = "ToModel_Throws_EmptyBody")]
+    [TestCase("null", TestName = "ToModel_Throws_JsonNull")]
+    [TestCase("<html>error</html>", TestName = "ToModel_Throws_Html")]
+    [TestCase("""{"id":7""", TestName = "ToModel_Throws_TruncatedJson")]
+    [TestCase("""[{"id":7}]""", TestName = "ToModel_Throws_Array")]
+    [TestCase("""{"id":"seven"}""", TestName = "ToModel_Throws_WrongJsonType")]
+    [TestCase("""{"tags":"one"}""", TestName = "ToModel_Throws_StringInsteadOfArray")]
+    public void ToModel_ThrowsAReadableErrorWhenTheBodyIsNotTheDto(string? body)
+    {
+        var act = () => Response(body).ToModel<ItemDto>();
 
         act.Should().Throw<InvalidOperationException>().WithMessage("Expected a ItemDto in the response body (status 200)*");
     }
 
     [Test]
-    public void ContentAsJsonObject_KeepsPropertyPresenceAndJsonTypes()
+    public void ToJson_LeavesNullPropertiesOut()
     {
-        var json = Response("""{"id":7,"name":null}""").ContentAsJsonObject();
-
-        json["id"]!.GetValueKind().Should().Be(JsonValueKind.Number);
-        json.ContainsKey("name").Should().BeTrue();
-        json["name"].Should().BeNull();
-        json.ContainsKey("tags").Should().BeFalse();
-    }
-
-    [Test]
-    public void ToJson_WritesDtoNullsAndUsesThePropertyNames()
-    {
-        JsonHelper.ToJson(new ItemDto { Id = 1 }).Should().Be("""{"Id":1,"Name":null}""");
+        JsonHelper.ToJson(new ItemDto { Id = 1, Name = "" }).Should().Be("""{"Id":1,"Name":""}""");
     }
 
     private static RestResponse Response(string? body) =>

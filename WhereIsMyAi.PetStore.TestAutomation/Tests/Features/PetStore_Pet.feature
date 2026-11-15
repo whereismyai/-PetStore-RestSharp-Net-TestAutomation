@@ -202,7 +202,6 @@ Scenario Outline: An invalid pet is rejected and nothing is stored
     Examples:
         | case                  | name | status    | id    |
         | missing required name |      | available | 30001 |
-        | null required name    | null | available | 30003 |
         | status not in enum    | Rex  | flying    | 30002 |
 
 @bug:BUG-004

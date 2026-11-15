@@ -1,57 +1,60 @@
 using System;
 using System.Linq;
-using System.Text.Json;
-using System.Text.Json.Nodes;
 using FluentAssertions;
-using WhereIsMyAi.PetStore.TestAutomation.Api.Clients;
 using WhereIsMyAi.PetStore.TestAutomation.Api.DTOs;
+using WhereIsMyAi.PetStore.TestAutomation.Api.RequestBuilders;
+using WhereIsMyAi.PetStore.TestAutomation.Api.RequestBuilders.Facade;
 using WhereIsMyAi.PetStore.TestAutomation.RuntimeVariables;
 using WhereIsMyAi.RestSharpBase.Core.Extensions;
 using WhereIsMyAi.RestSharpBase.Core.Helpers;
+using WhereIsMyAi.RestSharpBase.Core.Http;
 using Reqnroll;
 
 namespace WhereIsMyAi.PetStore.TestAutomation.Steps;
 
 /// <summary>Pet steps. A pet is addressed by ID, by name (unique per scenario) or as the last created pet.</summary>
 [Binding]
-public class PetSteps(PetApiClient petApi, CreatedPets createdPets, LastResponse lastResponse, RunIdInt runIdInt)
+public class PetSteps(PetStoreRequestBuilderFacade petStore, CreatedPets createdPets, LastResponse lastResponse, RunIdInt runIdInt)
     : BaseStep(runIdInt)
 {
     #region Pet creation - POST /pet
 
     // Repeated PhotoUrl / Tag rows build lists; Category and Tag take 'id:name' or 'name'.
-    // A blank value (or no row) leaves the property out of the JSON, 'null' sends null, '{empty}' sends "".
+    // A blank value (or no row) leaves the field out of the request, '{empty}' sends "".
     [When(@"^a pet is created with the following values via POST /pet$")]
     public void WhenAPetIsCreatedWithTheFollowingValuesViaPostPet(Table table)
     {
-        var response = petApi.CreatePet(BuildPet(table));
+        var response = BuildPet(table).SendCreatePet();
         lastResponse.Value = response;
 
         if (response.IsSuccessful)
-            createdPets.Value.Add(response.ContentAs<PetDto>());
+            createdPets.Value.Add(response.ToModel<PetDto>());
     }
 
-    private JsonObject BuildPet(Table table)
+    private PetRequestBuilder BuildPet(Table table)
     {
-        var pet = new JsonObject();
+        var pet = petStore.Pet();
 
         foreach (var row in table.Rows)
         {
-            var raw = row["Value"];
-            if (string.IsNullOrWhiteSpace(raw))
+            if (string.IsNullOrWhiteSpace(row["Value"]))
                 continue;
 
-            var isNull = raw == "null";
-            var value = raw == "{empty}" ? "" : ReplaceVariables(raw);
-
+            var value = row["Value"] == "{empty}" ? "" : ReplaceVariables(row["Value"]);
             switch (row["Field"].ToLowerInvariant())
             {
-                case "id": pet["id"] = isNull ? null : value == "" ? "" : value.ToLong("Pet Id"); break;
-                case "name": pet["name"] = isNull ? null : value; break;
-                case "status": pet["status"] = isNull ? null : value; break;
-                case "category": pet["category"] = isNull ? null : ParseIdAndName(value); break;
-                case "photourl": AddToList(pet, "photoUrls", isNull ? null : JsonValue.Create(value)); break;
-                case "tag": AddToList(pet, "tags", isNull ? null : ParseIdAndName(value)); break;
+                case "id": pet.WithId(value.ToLong("Pet Id")); break;
+                case "name": pet.WithName(value); break;
+                case "status": pet.WithStatus(value); break;
+                case "category":
+                    var (categoryId, categoryName) = SplitIdAndName(value);
+                    pet.WithCategory(categoryId, categoryName);
+                    break;
+                case "photourl": pet.WithPhotoUrl(value); break;
+                case "tag":
+                    var (tagId, tagName) = SplitIdAndName(value);
+                    pet.WithTag(tagId, tagName);
+                    break;
                 default: throw new NotSupportedException(
                     $"Field '{row["Field"]}' is not supported. Use Id, Name, Status, Category, PhotoUrl or Tag.");
             }
@@ -60,24 +63,11 @@ public class PetSteps(PetApiClient petApi, CreatedPets createdPets, LastResponse
         return pet;
     }
 
-    // A 'null' row sets the whole list to null; any other row adds an item.
-    private static void AddToList(JsonObject pet, string property, JsonNode? item)
-    {
-        if (item == null)
-            pet[property] = null;
-        else if (pet[property] is JsonArray list)
-            list.Add(item);
-        else
-            pet[property] = new JsonArray(item);
-    }
-
-    // "1:friendly" -> {"id":1,"name":"friendly"}; "friendly" -> {"name":"friendly"} (no id sent)
-    private static JsonObject ParseIdAndName(string value)
+    // "1:friendly" -> (1, "friendly"); "friendly" -> (null, "friendly"), the id is then not sent
+    private static (long? Id, string Name) SplitIdAndName(string value)
     {
         var parts = value.Split(':', 2);
-        return parts.Length == 2 && long.TryParse(parts[0], out var id)
-            ? new JsonObject { ["id"] = id, ["name"] = parts[1].Trim() }
-            : new JsonObject { ["name"] = value.Trim() };
+        return parts.Length == 2 && long.TryParse(parts[0], out var id) ? (id, parts[1].Trim()) : (null, value.Trim());
     }
 
     #endregion
@@ -95,7 +85,7 @@ public class PetSteps(PetApiClient petApi, CreatedPets createdPets, LastResponse
     [When(@"^the last created pet is retrieved via GET /pet/\{id\}$")]
     public void WhenTheLastCreatedPetIsRetrievedViaGetPetId() => GetPet(createdPets.GetLastPetId().ToString());
 
-    private void GetPet(string petId) => lastResponse.Value = petApi.GetPetById(petId);
+    private void GetPet(string petId) => lastResponse.Value = petStore.Pet().SendGetPetById(petId);
 
     #endregion
 
@@ -111,7 +101,7 @@ public class PetSteps(PetApiClient petApi, CreatedPets createdPets, LastResponse
     [When(@"^the last created pet is deleted via DELETE /pet/\{id\}$")]
     public void WhenTheLastCreatedPetIsDeletedViaDeletePetId() => DeletePet(createdPets.GetLastPetId().ToString());
 
-    private void DeletePet(string petId) => lastResponse.Value = petApi.DeletePetById(petId);
+    private void DeletePet(string petId) => lastResponse.Value = petStore.Pet().SendDeletePetById(petId);
 
     #endregion
 
@@ -126,9 +116,8 @@ public class PetSteps(PetApiClient petApi, CreatedPets createdPets, LastResponse
     [Then(@"^the response should have '(\d+)' status code and the returned pet should be exactly, with a generated Id$")]
     public void ThenTheResponseShouldHaveStatusCodeAndTheReturnedPetShouldBeExactlyWithAGeneratedId(int statusCode, Table table)
     {
-        var expected = ToExpectedPet(table);
-        var actual = ReadPet(statusCode, expected);
-        actual.Should().BeEquivalentTo(expected, options => options.WithStrictOrdering().Excluding(pet => pet.Id));
+        var actual = ReadPet(statusCode);
+        actual.Should().BeEquivalentTo(ToExpectedPet(table), options => options.WithStrictOrdering().Excluding(pet => pet.Id));
         actual.Id.Should().NotBeNull("the backend should generate an Id");
     }
 
@@ -146,37 +135,21 @@ public class PetSteps(PetApiClient petApi, CreatedPets createdPets, LastResponse
     public void ThenTheCreatedPetsShouldHaveDifferentIds() =>
         createdPets.Value.Select(pet => pet.Id).Should().OnlyHaveUniqueItems();
 
-    // The expected pet as the DTO the response is read into (lists not in the table are empty, as the server returns them).
-    private PetDto ToExpectedPet(Table table) => JsonHelper.FromJson<PetDto>(BuildPet(table).ToJsonString());
+    // The table built the same way as on creation; lists it has no rows for are expected as [], as the server
+    // returns them. The DTO is all-nullable, so a list (or any field) missing from the response fails the check.
+    private PetDto ToExpectedPet(Table table)
+    {
+        var pet = BuildPet(table).Body;
+        pet.PhotoUrls ??= new();
+        pet.Tags ??= new();
+        return pet;
+    }
 
     private void AssertMatches(int statusCode, PetDto expected) =>
-        ReadPet(statusCode, expected).Should().BeEquivalentTo(expected, options => options.WithStrictOrdering());
+        ReadPet(statusCode).Should().BeEquivalentTo(expected, options => options.WithStrictOrdering());
 
-    // Status, then the JSON contract the DTO cannot show (a missing photoUrls would read as an empty list), then the DTO.
-    private PetDto ReadPet(int statusCode, PetDto expected)
-    {
-        var response = lastResponse.Value;
-        ((int)response.StatusCode).Should().Be(statusCode, "response body: {0}", response.Content);
-
-        var json = response.ContentAsJsonObject();
-        ShouldHaveProperty(json, "id", JsonValueKind.Number);
-        ShouldHaveProperty(json, "photoUrls", JsonValueKind.Array);
-        ShouldHaveProperty(json, "tags", JsonValueKind.Array);
-        if (expected.Name != null)
-            ShouldHaveProperty(json, "name", JsonValueKind.String);
-        if (expected.Status != null)
-            ShouldHaveProperty(json, "status", JsonValueKind.String);
-        if (expected.Category != null)
-            ShouldHaveProperty(json, "category", JsonValueKind.Object);
-
-        return response.ContentAs<PetDto>();
-    }
-
-    private static void ShouldHaveProperty(JsonObject json, string property, JsonValueKind kind)
-    {
-        json.TryGetPropertyValue(property, out var node).Should().BeTrue("the pet JSON should have '{0}': {1}", property, json);
-        (node?.GetValueKind() ?? JsonValueKind.Null).Should().Be(kind, "'{0}' in the pet JSON: {1}", property, json);
-    }
+    // A value of the wrong JSON type (e.g. "id":"7") fails in ToModel.
+    private PetDto ReadPet(int statusCode) => lastResponse.Value.VerifyStatus(statusCode).ToModel<PetDto>();
 
     #endregion
 }

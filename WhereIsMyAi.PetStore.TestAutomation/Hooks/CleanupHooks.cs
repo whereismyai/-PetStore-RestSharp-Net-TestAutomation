@@ -1,7 +1,7 @@
 using System;
 using System.Net;
 using Microsoft.Extensions.Logging;
-using WhereIsMyAi.PetStore.TestAutomation.Api.Clients;
+using WhereIsMyAi.PetStore.TestAutomation.Api.RequestBuilders.Facade;
 using WhereIsMyAi.PetStore.TestAutomation.RuntimeVariables;
 using WhereIsMyAi.RestSharpBase.Core.Logger;
 using Reqnroll;
@@ -9,7 +9,7 @@ using Reqnroll;
 namespace WhereIsMyAi.PetStore.TestAutomation.Hooks;
 
 [Binding]
-public class CleanupHooks(CreatedPets createdPets, PetApiClient petApi)
+public class CleanupHooks(CreatedPets createdPets, PetStoreRequestBuilderFacade petStore)
 {
     private static ILogger Log => InternalLogger.Logger;
 
@@ -27,11 +27,11 @@ public class CleanupHooks(CreatedPets createdPets, PetApiClient petApi)
 
             try
             {
-                var response = petApi.DeletePetById(pet.Id.Value.ToString());
+                var response = petStore.Pet().SendDeletePetById(pet.Id.Value.ToString());
                 if (!response.IsSuccessful && response.StatusCode != HttpStatusCode.NotFound)
                     Log.LogWarning("Pet {PetId}: cleanup DELETE returned {Status}", pet.Id, (int)response.StatusCode);
             }
-            catch (Exception ex) // no response at all (RestApiClient throws): still only a warning
+            catch (Exception ex) // no response at all (Core throws): still only a warning
             {
                 Log.LogWarning("Pet {PetId}: cleanup DELETE failed: {Error}", pet.Id, ex.Message);
             }
