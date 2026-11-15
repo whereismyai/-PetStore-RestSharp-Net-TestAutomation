@@ -1,6 +1,6 @@
 using System;
 
-namespace WhereIsMyAi.PetStore.TestAutomation.Api.DTOs.RuntimeVariables;
+namespace WhereIsMyAi.PetStore.TestAutomation.RuntimeVariables;
 
 /// <summary>
 /// Runtime variable: run_id_int - a random 4-digit number generated once per scenario (by RunIdIntHooks).

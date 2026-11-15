@@ -2,7 +2,7 @@ using System;
 using System.Net;
 using Microsoft.Extensions.Logging;
 using WhereIsMyAi.PetStore.TestAutomation.Api.Clients;
-using WhereIsMyAi.PetStore.TestAutomation.Api.DTOs.RuntimeVariables;
+using WhereIsMyAi.PetStore.TestAutomation.RuntimeVariables;
 using WhereIsMyAi.RestSharpBase.Core.Logger;
 using Reqnroll;
 
@@ -20,9 +20,7 @@ public class CleanupHooks
         _petApi = petApi;
     }
 
-    // A failed cleanup must not fail the scenario - its assertions already ran on their own merit -
-    // so failures are only written to the scenario's output as a warning line instead of an exception.
-    // 404 is fine: the scenario already deleted that pet, which is the state cleanup wants anyway.
+    // A failed cleanup only logs a warning, it never fails the scenario; 404 = already deleted by the scenario.
     [AfterScenario]
     public void DeleteCreatedPets()
     {
@@ -30,7 +28,7 @@ public class CleanupHooks
         {
             try
             {
-                var response = _petApi.DeletePetById(pet.Id!.Value);
+                var response = _petApi.DeletePetById(pet.Id!.Value.ToString());
                 if (!response.IsSuccessful && response.StatusCode != HttpStatusCode.NotFound)
                 {
                     throw new Exception($"status code {(int)response.StatusCode}");
@@ -38,8 +36,6 @@ public class CleanupHooks
             }
             catch (Exception ex)
             {
-                // Logged once: InternalLogger writes to the console on this thread, so the line lands in this
-                // scenario's test report (and the console). Writing to TestContext as well would duplicate it.
                 InternalLogger.Logger.LogWarning("Pet {PetId}: cleanup DELETE failed: {Error}", pet.Id, ex.Message);
             }
         }

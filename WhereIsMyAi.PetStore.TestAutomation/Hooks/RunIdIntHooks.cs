@@ -1,6 +1,6 @@
 using System;
 using Microsoft.Extensions.Logging;
-using WhereIsMyAi.PetStore.TestAutomation.Api.DTOs.RuntimeVariables;
+using WhereIsMyAi.PetStore.TestAutomation.RuntimeVariables;
 using WhereIsMyAi.RestSharpBase.Core.Logger;
 using Reqnroll;
 
@@ -15,7 +15,7 @@ public class RunIdIntHooks
     {
         _runIdInt = runIdInt;
     }
-    
+
     [BeforeScenario]
     public void GenerateRunIdInt()
     {
