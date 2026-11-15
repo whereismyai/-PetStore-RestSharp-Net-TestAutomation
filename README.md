@@ -65,8 +65,10 @@ Dependencies point one way only: `Tests -> Api -> Core`.
 
 ## Approach
 
-- **Check what is stored, not only the reply.** Every created pet is read back with `GET` and compared as a
-  whole object with the pet the `POST` returned (all fields, category and tag ids, list order).
+- **Check what is stored, not only the reply.** Every created pet is read back with `GET`. When the Id is known,
+  the whole expected pet is written in the feature file and both responses must equal it exactly (all fields,
+  category and tag ids, list order). Only pets with generated Ids are compared with the pet the `POST` returned.
+  Names and tags include non-Latin letters, emoji and special characters.
   Error replies are checked by their exact message, not only by the status code.
 - **No collisions on a shared server.** Explicit IDs are prefixed with `{run_id_int}`, a random 4-digit
   number generated for each scenario (`{run_id_int}12345` -> `482112345`), in the request, the checks and the

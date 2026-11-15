@@ -7,22 +7,35 @@ Scenario: A pet can be created with all fields and deleted
         | Id       | {run_id_int}12345            |
         | Name     | Baily                        |
         | Status   | available                    |
-        | Category | dogs                         |
+        | Category | 1:dogs                       |
         | PhotoUrl | https://example.com/dog1.jpg |
         | PhotoUrl | https://example.com/dog2.jpg |
         | Tag      | 1:friendly                   |
-        | Tag      | 2:vaccinated                 |
-        | Tag      | 3:small                      |
-    Then the response should have '200' status code and contain the following values
-        | Field     | Value                                                       |
-        | Id        | {run_id_int}12345                                           |
-        | Name      | Baily                                                       |
-        | Status    | available                                                   |
-        | Category  | dogs                                                        |
-        | PhotoUrls | https://example.com/dog1.jpg ↕ https://example.com/dog2.jpg |
-        | Tags      | 1:friendly ↕ 2:vaccinated ↕ 3:small                         |
+        | Tag      | 2:вакцинирован, 100%         |
+        | Tag      | 3:small & "cute"             |
+    Then the response should have '200' status code and the returned pet should be exactly
+        | Field    | Value                        |
+        | Id       | {run_id_int}12345            |
+        | Name     | Baily                        |
+        | Status   | available                    |
+        | Category | 1:dogs                       |
+        | PhotoUrl | https://example.com/dog1.jpg |
+        | PhotoUrl | https://example.com/dog2.jpg |
+        | Tag      | 1:friendly                   |
+        | Tag      | 2:вакцинирован, 100%         |
+        | Tag      | 3:small & "cute"             |
     When the created pet named 'Baily' is retrieved via GET /pet/{id}
-    Then the response should have '200' status code and match the created pet named 'Baily'
+    Then the response should have '200' status code and the returned pet should be exactly
+        | Field    | Value                        |
+        | Id       | {run_id_int}12345            |
+        | Name     | Baily                        |
+        | Status   | available                    |
+        | Category | 1:dogs                       |
+        | PhotoUrl | https://example.com/dog1.jpg |
+        | PhotoUrl | https://example.com/dog2.jpg |
+        | Tag      | 1:friendly                   |
+        | Tag      | 2:вакцинирован, 100%         |
+        | Tag      | 3:small & "cute"             |
     When the created pet named 'Baily' is deleted via DELETE /pet/{id}
     Then the response status should be '200'
     When the created pet named 'Baily' is deleted via DELETE /pet/{id}
@@ -33,14 +46,19 @@ Scenario Outline: A pet can be created and deleted with each status value
     When pet is created with the following values via POST /pet
         | Field  | Value            |
         | Id     | {run_id_int}<id> |
-        | Name   | Rex              |
+        | Name   | <name>           |
         | Status | <status>         |
-    Then the response should have '200' status code and contain the following values
+    Then the response should have '200' status code and the returned pet should be exactly
         | Field  | Value            |
         | Id     | {run_id_int}<id> |
+        | Name   | <name>           |
         | Status | <status>         |
     When the last created pet is retrieved via GET /pet/{id}
-    Then the response should have '200' status code and match the last created pet
+    Then the response should have '200' status code and the returned pet should be exactly
+        | Field  | Value            |
+        | Id     | {run_id_int}<id> |
+        | Name   | <name>           |
+        | Status | <status>         |
     When the last created pet is deleted via DELETE /pet/{id}
     Then the response status should be '200'
     And the response message should be '{run_id_int}<id>'
@@ -49,10 +67,10 @@ Scenario Outline: A pet can be created and deleted with each status value
     And the response message should be 'Pet not found'
 
     Examples:
-        | status    | id    |
-        | available | 20001 |
-        | pending   | 20002 |
-        | sold      | 20003 |
+        | status    | name             | id    |
+        | available | Rex              | 20001 |
+        | pending   | Тузик            | 20002 |
+        | sold      | Señor Bigotes 🐶 | 20003 |
 
 Scenario: Tags and photo URLs can be reused by several pets and stay after one pet is deleted
     When pet is created with the following values via POST /pet
@@ -60,25 +78,35 @@ Scenario: Tags and photo URLs can be reused by several pets and stay after one p
         | Id       | {run_id_int}11111              |
         | Name     | Rex                            |
         | PhotoUrl | https://example.com/shared.jpg |
-        | Tag      | 1:friendly                     |
+        | Tag      | 1:good boy & friendly          |
     And pet is created with the following values via POST /pet
         | Field    | Value                          |
         | Id       | {run_id_int}22222              |
-        | Name     | Max                            |
+        | Name     | Max-Müller (Jr.)               |
         | PhotoUrl | https://example.com/shared.jpg |
-        | Tag      | 1:friendly                     |
-    Then the response should have '200' status code and contain the following values
-        | Field     | Value                          |
-        | Id        | {run_id_int}22222              |
-        | Name      | Max                            |
-        | PhotoUrls | https://example.com/shared.jpg |
-        | Tags      | 1:friendly                     |
+        | Tag      | 1:good boy & friendly          |
+    Then the response should have '200' status code and the returned pet should be exactly
+        | Field    | Value                          |
+        | Id       | {run_id_int}22222              |
+        | Name     | Max-Müller (Jr.)               |
+        | PhotoUrl | https://example.com/shared.jpg |
+        | Tag      | 1:good boy & friendly          |
     When the created pet named 'Rex' is retrieved via GET /pet/{id}
-    Then the response should have '200' status code and match the created pet named 'Rex'
+    Then the response should have '200' status code and the returned pet should be exactly
+        | Field    | Value                          |
+        | Id       | {run_id_int}11111              |
+        | Name     | Rex                            |
+        | PhotoUrl | https://example.com/shared.jpg |
+        | Tag      | 1:good boy & friendly          |
     When the created pet named 'Rex' is deleted via DELETE /pet/{id}
     Then the response status should be '200'
-    When the created pet named 'Max' is retrieved via GET /pet/{id}
-    Then the response should have '200' status code and match the created pet named 'Max'
+    When the created pet named 'Max-Müller (Jr.)' is retrieved via GET /pet/{id}
+    Then the response should have '200' status code and the returned pet should be exactly
+        | Field    | Value                          |
+        | Id       | {run_id_int}22222              |
+        | Name     | Max-Müller (Jr.)               |
+        | PhotoUrl | https://example.com/shared.jpg |
+        | Tag      | 1:good boy & friendly          |
 
 @bug:BUG-002
 Scenario: Pets created without an ID get their own generated IDs
@@ -86,7 +114,7 @@ Scenario: Pets created without an ID get their own generated IDs
         | Field    | Value     |
         | Name     | Toothless |
         | Category | DRAGONS   |
-    Then the response should have '200' status code and contain the following values
+    Then the response should have '200' status code and the returned pet should contain
         | Field     | Value          |
         | Id        | {valid-number} |
         | Name      | Toothless      |
@@ -98,16 +126,16 @@ Scenario: Pets created without an ID get their own generated IDs
         | Field    | Value      |
         | Name     | Stormfly   |
         | Category | NIGHT_FURY |
-    Then the response should have '200' status code and contain the following values
+    Then the response should have '200' status code and the returned pet should contain
         | Field    | Value          |
         | Id       | {valid-number} |
         | Name     | Stormfly       |
         | Category | NIGHT_FURY     |
     And the created pets should have different IDs
     When the created pet named 'Toothless' is retrieved via GET /pet/{id}
-    Then the response should have '200' status code and match the created pet named 'Toothless'
+    Then the response should have '200' status code and the returned pet should match the created pet named 'Toothless'
     When the created pet named 'Stormfly' is retrieved via GET /pet/{id}
-    Then the response should have '200' status code and match the created pet named 'Stormfly'
+    Then the response should have '200' status code and the returned pet should match the created pet named 'Stormfly'
 
 @bug:BUG-001
 Scenario: Creating a pet with an existing ID is rejected and the existing pet is kept
@@ -123,7 +151,11 @@ Scenario: Creating a pet with an existing ID is rejected and the existing pet is
         | Status | sold              |
     Then the response status should be '409'
     When the created pet named 'First' is retrieved via GET /pet/{id}
-    Then the response should have '200' status code and match the created pet named 'First'
+    Then the response should have '200' status code and the returned pet should be exactly
+        | Field  | Value             |
+        | Id     | {run_id_int}12348 |
+        | Name   | First             |
+        | Status | available         |
 
 @bug:BUG-003
 Scenario Outline: An invalid pet is rejected and nothing is stored

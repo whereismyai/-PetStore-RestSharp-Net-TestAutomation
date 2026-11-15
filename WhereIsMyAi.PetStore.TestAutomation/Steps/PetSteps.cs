@@ -30,7 +30,7 @@ public class PetSteps : BaseStep
 
     #region Pet creation - POST /pet
 
-    // Repeated PhotoUrl / Tag rows build lists; 'null' leaves a field out. Prefix explicit Ids with {run_id_int}.
+    // Repeated PhotoUrl / Tag rows build lists; Category and Tag take 'id:name' or 'name'; 'null' leaves a field out.
     [When(@"^pet is created with the following values via POST /pet$")]
     public void WhenPetIsCreated(Table table)
     {
@@ -57,7 +57,7 @@ public class PetSteps : BaseStep
                 case "id": pet.Id = long.Parse(value); break;
                 case "name": pet.Name = value; break;
                 case "status": pet.Status = value; break;
-                case "category": pet.Category = new Category { Name = value }; break;
+                case "category": pet.Category = ParseCategory(value); break;
                 case "photourl": pet.PhotoUrls.Add(value); break;
                 case "tag": pet.Tags.Add(ParseTag(value)); break;
                 default: throw new NotSupportedException($"Field '{row["Field"]}' is not supported.");
@@ -67,13 +67,23 @@ public class PetSteps : BaseStep
         return pet;
     }
 
-    // "1:friendly" -> { Id = 1, Name = "friendly" }; "friendly" -> { Name = "friendly" }
+    private static Category ParseCategory(string value)
+    {
+        var (id, name) = SplitIdAndName(value);
+        return new Category { Id = id, Name = name };
+    }
+
     private static Tag ParseTag(string value)
     {
+        var (id, name) = SplitIdAndName(value);
+        return new Tag { Id = id, Name = name };
+    }
+
+    // "1:friendly" -> (1, "friendly"); "friendly" -> (null, "friendly")
+    private static (long? Id, string Name) SplitIdAndName(string value)
+    {
         var parts = value.Split(':', 2);
-        return parts.Length == 2
-            ? new Tag { Id = long.Parse(parts[0]), Name = parts[1].Trim() }
-            : new Tag { Name = value.Trim() };
+        return parts.Length == 2 && long.TryParse(parts[0], out var id) ? (id, parts[1].Trim()) : (null, value.Trim());
     }
 
     #endregion
@@ -111,9 +121,14 @@ public class PetSteps : BaseStep
 
     #region Pet response checks
 
+    // Known Id: the table is the whole expected pet, in the same format as on creation; every field must be equal.
+    [Then(@"^the response should have '(\d+)' status code and the returned pet should be exactly$")]
+    public void ThenTheReturnedPetShouldBeExactly(int statusCode, Table table) =>
+        AssertMatches(statusCode, BuildPet(table));
+
     // Checks the listed fields only. 'null' = absent, '[]' = empty list, '{valid-number}' = any Id, tags as 'id:name'.
-    [Then(@"^the response should have '(\d+)' status code and contain the following values$")]
-    public void ThenTheResponseShouldContainTheFollowingValues(int statusCode, Table table)
+    [Then(@"^the response should have '(\d+)' status code and the returned pet should contain$")]
+    public void ThenTheReturnedPetShouldContain(int statusCode, Table table)
     {
         var pet = ReadPet(statusCode);
 
@@ -136,14 +151,10 @@ public class PetSteps : BaseStep
         }
     }
 
-    // The whole pet must equal the created one, as the POST returned it.
-    [Then(@"^the response should have '(\d+)' status code and match the created pet named '([^']+)'$")]
-    public void ThenTheResponseShouldMatchTheCreatedPetNamed(int statusCode, string name) =>
+    // Generated Id: the whole pet must equal the created one, as the POST returned it.
+    [Then(@"^the response should have '(\d+)' status code and the returned pet should match the created pet named '([^']+)'$")]
+    public void ThenTheReturnedPetShouldMatchTheCreatedPetNamed(int statusCode, string name) =>
         AssertMatches(statusCode, _createdPets.Named(ReplaceVariables(name)));
-
-    [Then(@"^the response should have '(\d+)' status code and match the last created pet$")]
-    public void ThenTheResponseShouldMatchTheLastCreatedPet(int statusCode) =>
-        AssertMatches(statusCode, _createdPets.Last);
 
     [Then(@"^the created pets should have different IDs$")]
     public void ThenTheCreatedPetsShouldHaveDifferentIds() =>
