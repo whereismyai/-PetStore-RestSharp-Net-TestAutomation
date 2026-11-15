@@ -9,7 +9,7 @@ namespace WhereIsMyAi.RestSharpBase.Core.Helpers;
 /// folder (so it works from bin/Debug/... and from the repo root). A real environment variable
 /// with the same name wins, which lets CI override the file without having one.
 /// </summary>
-public static class EnvFile
+public static class EnvFileHelper
 {
     private static readonly Lazy<(Dictionary<string, string> Values, string? Folder)> File = new(Load);
 

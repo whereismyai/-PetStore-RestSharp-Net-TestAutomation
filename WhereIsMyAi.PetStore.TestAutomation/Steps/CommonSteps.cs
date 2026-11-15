@@ -1,6 +1,5 @@
 using FluentAssertions;
 using WhereIsMyAi.PetStore.TestAutomation.RuntimeVariables;
-using WhereIsMyAi.PetStore.TestAutomation.Utils;
 using Reqnroll;
 using RestSharp;
 
@@ -8,7 +7,7 @@ namespace WhereIsMyAi.PetStore.TestAutomation.Steps;
 
 /// <summary>Steps that apply to any endpoint.</summary>
 [Binding]
-public class CommonSteps(LastResponse lastResponse, VariableRepository variables) : BaseStep(variables)
+public class CommonSteps(LastResponse lastResponse, RunIdInt runIdInt) : BaseStep(runIdInt)
 {
     // Read when a step runs, not in the constructor: the When steps set Value after this class is created.
     private RestResponse Response => lastResponse.Value;

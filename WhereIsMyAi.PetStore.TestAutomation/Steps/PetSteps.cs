@@ -4,8 +4,8 @@ using FluentAssertions;
 using WhereIsMyAi.PetStore.TestAutomation.Api.Clients;
 using WhereIsMyAi.PetStore.TestAutomation.Api.DTOs;
 using WhereIsMyAi.PetStore.TestAutomation.RuntimeVariables;
+using WhereIsMyAi.RestSharpBase.Core.Extensions;
 using WhereIsMyAi.RestSharpBase.Core.Helpers;
-using WhereIsMyAi.PetStore.TestAutomation.Utils;
 using Reqnroll;
 
 namespace WhereIsMyAi.PetStore.TestAutomation.Steps;
@@ -18,8 +18,9 @@ public class PetSteps : BaseStep
     private readonly CreatedPets _createdPets;
     private readonly LastResponse _lastResponse;
 
-    public PetSteps(PetApiClient petApi, CreatedPets createdPets, LastResponse lastResponse, VariableRepository variables)
-        : base(variables)
+    public PetSteps(PetApiClient petApi, CreatedPets createdPets, LastResponse lastResponse,
+        RunIdInt runIdInt)
+        : base(runIdInt)
     {
         _petApi = petApi;
         _createdPets = createdPets;
@@ -30,14 +31,15 @@ public class PetSteps : BaseStep
 
     // Repeated PhotoUrl / Tag rows build lists; Category and Tag take 'id:name' or 'name'; 'null' leaves a field out.
     [When(@"^pet is created with the following values via POST /pet$")]
-    public void WhenPetIsCreated(Table table)
+    public void WhenPetIsCreatedWithTheFollowingValuesViaPostPet(Table table)
     {
         var response = _petApi.CreatePet(BuildPet(table));
         _lastResponse.Value = response;
 
-        var createdPet = response.IsSuccessful ? response.Content<PetDto>() : null;
-        if (createdPet?.Id != null)
-            _createdPets.Value.Add(createdPet);
+        if (response.IsSuccessful)
+            _createdPets.Value.Add(response.Content<PetDto>() ?? throw new InvalidOperationException(
+                $"The pet was created (status {(int)response.StatusCode}), " +
+                $"but the server sent no or invalid pet back in the response."));
     }
 
     private PetDto BuildPet(Table table)
@@ -52,13 +54,14 @@ public class PetSteps : BaseStep
 
             switch (row["Field"].ToLowerInvariant())
             {
-                case "id": pet.Id = long.Parse(value); break;
+                case "id": pet.Id = value.ToLong("Pet Id"); break;
                 case "name": pet.Name = value; break;
                 case "status": pet.Status = value; break;
                 case "category": pet.Category = ParseCategory(value); break;
                 case "photourl": pet.PhotoUrls.Add(value); break;
                 case "tag": pet.Tags.Add(ParseTag(value)); break;
-                default: throw new NotSupportedException($"Field '{row["Field"]}' is not supported.");
+                default: throw new NotSupportedException(
+                    $"Field '{row["Field"]}' is not supported. Use Id, Name, Status, Category, PhotoUrl or Tag.");
             }
         }
 
@@ -90,13 +93,14 @@ public class PetSteps : BaseStep
 
     // For pets the scenario did not create; the ID is sent as written, so 'abc' works too.
     [When(@"^the pet with ID '([^']+)' is retrieved via GET /pet/\{id\}$")]
-    public void WhenThePetWithIdIsRetrieved(string petId) => GetPet(ReplaceVariables(petId));
+    public void WhenThePetWithIdIsRetrievedViaGetPetId(string petId) => GetPet(ReplaceVariables(petId));
 
     [When(@"^the created pet named '([^']+)' is retrieved via GET /pet/\{id\}$")]
-    public void WhenTheCreatedPetNamedIsRetrieved(string name) => GetPet(_createdPets.Named(ReplaceVariables(name)).Id!.Value.ToString());
+    public void WhenTheCreatedPetNamedIsRetrievedViaGetPetId(string name) =>
+        GetPet(_createdPets.IdOf(ReplaceVariables(name)).ToString());
 
     [When(@"^the last created pet is retrieved via GET /pet/\{id\}$")]
-    public void WhenTheLastCreatedPetIsRetrieved() => GetPet(_createdPets.LastId.ToString());
+    public void WhenTheLastCreatedPetIsRetrievedViaGetPetId() => GetPet(_createdPets.LastId.ToString());
 
     private void GetPet(string petId) => _lastResponse.Value = _petApi.GetPetById(petId);
 
@@ -105,13 +109,14 @@ public class PetSteps : BaseStep
     #region Pet deletion - DELETE /pet/{id}
 
     [When(@"^the pet with ID '([^']+)' is deleted via DELETE /pet/\{id\}$")]
-    public void WhenThePetWithIdIsDeleted(string petId) => DeletePet(ReplaceVariables(petId));
+    public void WhenThePetWithIdIsDeletedViaDeletePetId(string petId) => DeletePet(ReplaceVariables(petId));
 
     [When(@"^the created pet named '([^']+)' is deleted via DELETE /pet/\{id\}$")]
-    public void WhenTheCreatedPetNamedIsDeleted(string name) => DeletePet(_createdPets.Named(ReplaceVariables(name)).Id!.Value.ToString());
+    public void WhenTheCreatedPetNamedIsDeletedViaDeletePetId(string name) =>
+        DeletePet(_createdPets.IdOf(ReplaceVariables(name)).ToString());
 
     [When(@"^the last created pet is deleted via DELETE /pet/\{id\}$")]
-    public void WhenTheLastCreatedPetIsDeleted() => DeletePet(_createdPets.LastId.ToString());
+    public void WhenTheLastCreatedPetIsDeletedViaDeletePetId() => DeletePet(_createdPets.LastId.ToString());
 
     private void DeletePet(string petId) => _lastResponse.Value = _petApi.DeletePetById(petId);
 
@@ -121,13 +126,14 @@ public class PetSteps : BaseStep
 
     // Known Id: the table is the whole expected pet, in the same format as on creation; every field must be equal.
     [Then(@"^the response should have '(\d+)' status code and the returned pet should be exactly$")]
-    public void ThenTheReturnedPetShouldBeExactly(int statusCode, Table table) =>
+    public void ThenTheResponseShouldHaveStatusCodeAndTheReturnedPetShouldBeExactly(int statusCode, Table table) =>
         AssertMatches(statusCode, BuildPet(table));
 
     // Generated Id: the whole pet must equal the created one, as the POST returned it.
-    [Then(@"^the response should have '(\d+)' status code and the returned pet should match the created pet named '([^']+)'$")]
-    public void ThenTheReturnedPetShouldMatchTheCreatedPetNamed(int statusCode, string name) =>
-        AssertMatches(statusCode, _createdPets.Named(ReplaceVariables(name)));
+    [Then(
+        @"^the response should have '(\d+)' status code and the returned pet should match the created pet named '([^']+)'$")]
+    public void ThenTheResponseShouldHaveStatusCodeAndTheReturnedPetShouldMatchTheCreatedPetNamed(int statusCode, string name) =>
+        AssertMatches(statusCode, _createdPets.GetPetByName(ReplaceVariables(name)));
 
     [Then(@"^the created pets should have different IDs$")]
     public void ThenTheCreatedPetsShouldHaveDifferentIds() =>

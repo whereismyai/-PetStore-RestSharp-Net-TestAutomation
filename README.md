@@ -50,14 +50,14 @@ dotnet test --logger "trx"                        # TRX report with each scenari
 WhereIsMyAi.RestSharpBase.Core/
   Http/RestApiClient.cs        abstract RestSharp wrapper (Get / Post / Put / Delete), logs every request
   Logger/InternalLogger.cs     console logger that writes on the test's own thread
-  Helpers/                     EnvFile (.env settings), JsonHelper, VariableReplacer
+  Extensions/                  StringExtensions (ToLong)
+  Helpers/                     EnvFileHelper (.env settings), JsonHelper
   Tms/                         Bug, BugRepository (bugs/*.md), BugGate (skip decision)
 WhereIsMyAi.PetStore.TestAutomation/
   Api/                         PetStoreConfig, Clients/PetApiClient, DTOs/PetDto
   RuntimeVariables/            per-scenario state: CreatedPets, LastResponse, RunIdInt
   Steps/                       BaseStep, CommonSteps, PetSteps (regions: creation, retrieval, deletion, checks)
-  Hooks/                       BugHooks, RunIdIntHooks (before scenario), CleanupHooks (after scenario)
-  Utils/VariableRepository.cs  scenario variables: {run_id_int}
+  Hooks/                       BugHooks, CleanupHooks (after scenario)
   Tests/Features/              PetStore_Pet.feature
 bugs/                          local bug repository: one BUG-xxx.md per bug
 ```
