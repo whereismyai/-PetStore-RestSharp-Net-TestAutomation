@@ -21,10 +21,17 @@ jobs:
     runs-on: ubuntu-latest
     env:
       BASE_URL: https://petstore.swagger.io/v2
-      BUGS_REPO_PATH: ${{ github.workspace }}/bugs
+      BUGS_REPO_PATH: ${{ github.workspace }}/bugs # enables the open-bug skip logic
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 10.0.x
-      - run: dotnet test -c Release
+      - run: dotnet test -c Release --logger trx --results-directory TestResults
+      - name: List skipped tests in the run summary
+        if: always()
+        run: |
+          {
+            echo "### Skipped tests (open bugs)"
+            grep -h 'outcome="NotExecuted"' TestResults/*.trx | sed -E 's/.*testName="([^"]*)".*/- \1/' || true
+          } >> "$GITHUB_STEP_SUMMARY"
