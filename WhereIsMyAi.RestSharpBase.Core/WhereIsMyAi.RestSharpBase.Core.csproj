@@ -1,7 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-  <!-- Project-agnostic RestSharp base: HTTP client wrapper, logger and generic helpers.
-       Must not reference any project-specific code (no API under test, no test framework). -->
+  <!-- Project-agnostic RestSharp base: no API under test, no test framework. -->
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <IsPackable>false</IsPackable>
@@ -10,7 +9,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.Extensions.Logging" Version="11.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.15" />
     <PackageReference Include="RestSharp" Version="114.1.0" />
   </ItemGroup>
 

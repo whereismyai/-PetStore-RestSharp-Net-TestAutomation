@@ -40,7 +40,7 @@ public class EnvFileHelperTests
 
         var file = EnvFileHelper.Load(nested);
 
-        file.FolderPath.Should().Be(_root);
+        file.Path.Should().Be(_root);
         file.Values.Should().ContainKey(_key).WhoseValue.Should().Be("from-file");
     }
 

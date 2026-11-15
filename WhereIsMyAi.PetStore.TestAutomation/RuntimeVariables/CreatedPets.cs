@@ -10,6 +10,9 @@ public class CreatedPets
 {
     public List<PetDto> Value { get; } = new();
 
+    /// <summary>Every Id sent in a POST, also when the POST failed; cleanup deletes these too.</summary>
+    public List<long> SentIds { get; } = new();
+
     public PetDto GetLastPet() =>
         Value.LastOrDefault() ?? throw new InvalidOperationException("No pet has been created in this scenario yet.");
 

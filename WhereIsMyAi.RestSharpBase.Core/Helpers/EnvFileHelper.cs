@@ -4,17 +4,13 @@ using System.IO;
 
 namespace WhereIsMyAi.RestSharpBase.Core.Helpers;
 
-/// <summary>
-/// Reads KEY=VALUE settings from a .env file, found by searching upward from the build output
-/// folder (so it works from bin/Debug/... and from the repo root). A real environment variable
-/// with the same name wins, which lets CI override the file without having one.
-/// </summary>
+/// <summary>KEY=VALUE settings: a real environment variable wins, else the first .env file found upward from the build output.</summary>
 public static class EnvFileHelper
 {
     private static readonly Lazy<EnvFile> File = new(() => Load(AppContext.BaseDirectory));
 
-    /// <summary>The settings of a .env file and the path of its folder (null when no .env file was found).</summary>
-    internal sealed record EnvFile(Dictionary<string, string> Values, string? FolderPath);
+    /// <summary>The settings of a .env file and the path of the folder that holds it (null when no .env file was found).</summary>
+    internal sealed record EnvFile(Dictionary<string, string> Values, string? Path);
 
     /// <summary>A required setting; throws when it is missing.</summary>
     public static string Get(string key) =>
@@ -33,24 +29,21 @@ public static class EnvFileHelper
         return file.Values.TryGetValue(key, out value) && !string.IsNullOrWhiteSpace(value) ? value : null;
     }
 
-    /// <summary>
-    /// An optional path setting as a full path; null when it is missing. A relative path is resolved against
-    /// the folder of the .env file (the current directory when there is no .env file).
-    /// </summary>
+    /// <summary>An optional path setting as a full path, relative ones resolved against the .env folder; null when missing.</summary>
     public static string? GetOptionalPath(string key) => GetOptionalPath(key, File.Value);
 
     internal static string? GetOptionalPath(string key, EnvFile file)
     {
         var value = GetOptional(key, file);
-        return value == null ? null : Path.GetFullPath(value, file.FolderPath ?? Directory.GetCurrentDirectory());
+        return value == null ? null : Path.GetFullPath(value, file.Path ?? Directory.GetCurrentDirectory());
     }
 
-    /// <summary>The first .env file found in startFolder or above it.</summary>
-    internal static EnvFile Load(string startFolder)
+    /// <summary>The first .env file found in startPath or above it.</summary>
+    internal static EnvFile Load(string startPath)
     {
         var values = new Dictionary<string, string>();
 
-        for (var dir = new DirectoryInfo(startFolder); dir != null; dir = dir.Parent)
+        for (var dir = new DirectoryInfo(startPath); dir != null; dir = dir.Parent)
         {
             var path = Path.Combine(dir.FullName, ".env");
             if (!System.IO.File.Exists(path))

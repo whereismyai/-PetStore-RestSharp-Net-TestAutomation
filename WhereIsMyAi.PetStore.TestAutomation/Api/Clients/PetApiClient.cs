@@ -9,7 +9,7 @@ public class PetApiClient() : RestApiClient(PetStoreConfig.BaseUrl)
 {
     public RestResponse CreatePet(PetDto pet) => Post("/pet", pet);
 
-    // String IDs, so tests can send invalid ones ("abc").
+    // String Ids, so tests can send invalid ones ("abc").
     public RestResponse GetPetById(string petId) => Get($"/pet/{petId}");
 
     public RestResponse DeletePetById(string petId) => Delete($"/pet/{petId}");

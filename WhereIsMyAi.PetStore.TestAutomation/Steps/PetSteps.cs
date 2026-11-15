@@ -10,7 +10,7 @@ using Reqnroll;
 
 namespace WhereIsMyAi.PetStore.TestAutomation.Steps;
 
-/// <summary>Pet steps. A pet is addressed by ID, by name (unique per scenario) or as the last created pet.</summary>
+/// <summary>Pet steps. A pet is addressed by Id, by name (unique per scenario) or as the last created pet.</summary>
 [Binding]
 public class PetSteps(PetApiClient petApi, CreatedPets createdPets, LastResponse lastResponse, RunIdInt runIdInt)
     : BaseStep(runIdInt)
@@ -21,7 +21,11 @@ public class PetSteps(PetApiClient petApi, CreatedPets createdPets, LastResponse
     [When(@"^a pet is created with the following values via POST /pet$")]
     public void WhenAPetIsCreatedWithTheFollowingValuesViaPostPet(Table table)
     {
-        var response = petApi.CreatePet(BuildPet(table));
+        var pet = BuildPet(table);
+        if (pet.Id != null) // recorded before sending: cleanup deletes it even if the reply has a wrong Id or none
+            createdPets.SentIds.Add(pet.Id.Value);
+
+        var response = petApi.CreatePet(pet);
         lastResponse.Value = response;
 
         if (response.IsSuccessful)
@@ -77,8 +81,8 @@ public class PetSteps(PetApiClient petApi, CreatedPets createdPets, LastResponse
 
     #region Pet retrieval - GET /pet/{id}
 
-    // For pets the scenario did not create; the ID is sent as written, so 'abc' works too.
-    [When(@"^the pet with ID '(.*)' is retrieved via GET /pet/\{id\}$")]
+    // For pets the scenario did not create; the Id is sent as written, so 'abc' works too.
+    [When(@"^the pet with Id '(.*)' is retrieved via GET /pet/\{id\}$")]
     public void WhenThePetWithIdIsRetrievedViaGetPetId(string petId) => GetPet(ReplaceVariables(petId));
 
     [When(@"^the created pet named '(.*)' is retrieved via GET /pet/\{id\}$")]
@@ -94,7 +98,7 @@ public class PetSteps(PetApiClient petApi, CreatedPets createdPets, LastResponse
 
     #region Pet deletion - DELETE /pet/{id}
 
-    [When(@"^the pet with ID '(.*)' is deleted via DELETE /pet/\{id\}$")]
+    [When(@"^the pet with Id '(.*)' is deleted via DELETE /pet/\{id\}$")]
     public void WhenThePetWithIdIsDeletedViaDeletePetId(string petId) => DeletePet(ReplaceVariables(petId));
 
     [When(@"^the created pet named '(.*)' is deleted via DELETE /pet/\{id\}$")]
@@ -118,7 +122,8 @@ public class PetSteps(PetApiClient petApi, CreatedPets createdPets, LastResponse
     // Generated Id, POST: every field but the Id must equal the table (never compare with an earlier response).
     [Then(@"^the response should have '(\d+)' status code and the returned pet should be exactly, with a generated Id$")]
     public void ThenTheResponseShouldHaveStatusCodeAndTheReturnedPetShouldBeExactlyWithAGeneratedId(int statusCode, Table table) =>
-        ReadPet(statusCode).Should().BeEquivalentTo(ToExpectedPet(table), options => options.WithStrictOrdering().Excluding(pet => pet.Id));
+        ReadPet(statusCode).Should().BeEquivalentTo(ToExpectedPet(table), options => options.WithStrictOrdering().Excluding(pet => pet.Id),
+            "response body: {0}", lastResponse.Value.Content);
 
     // Generated Id, later reads: the table plus the Id the POST returned for that pet.
     [Then(@"^the response should have '(\d+)' status code and the returned pet should be exactly, with the Id of the created pet named '(.*)'$")]
@@ -130,7 +135,7 @@ public class PetSteps(PetApiClient petApi, CreatedPets createdPets, LastResponse
         AssertMatches(statusCode, expected);
     }
 
-    [Then(@"^the created pets should have different IDs$")]
+    [Then(@"^the created pets should have different Ids$")]
     public void ThenTheCreatedPetsShouldHaveDifferentIds() =>
         createdPets.Value.Select(pet => pet.Id).Should().OnlyHaveUniqueItems();
 
@@ -144,10 +149,10 @@ public class PetSteps(PetApiClient petApi, CreatedPets createdPets, LastResponse
     }
 
     private void AssertMatches(int statusCode, PetDto expected) =>
-        ReadPet(statusCode).Should().BeEquivalentTo(expected, options => options.WithStrictOrdering());
+        ReadPet(statusCode).Should().BeEquivalentTo(expected, options => options.WithStrictOrdering(),
+            "response body: {0}", lastResponse.Value.Content);
 
-    // Wrong JSON types (e.g. "id":"7") already fail in ContentAs. The DTO is all-nullable, so a missing property
-    // stays null: the required ones are checked by name here, so the failure says which one is missing.
+    // Wrong JSON types fail in ContentAs; missing required properties (null in the DTO) fail here by name.
     private PetDto ReadPet(int statusCode)
     {
         var response = lastResponse.Value;
