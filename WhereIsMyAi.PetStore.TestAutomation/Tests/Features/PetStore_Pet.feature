@@ -11,7 +11,7 @@ Scenario: A pet can be created with all fields and deleted
         | PhotoUrl | https://example.com/dog1.jpg |
         | PhotoUrl | https://example.com/dog2.jpg |
         | Tag      | 1:friendly                   |
-        | Tag      | 2:вакцинирован, 100%         |
+        | Tag      | 2:з щепленням, 100%          |
         | Tag      | 3:small & "cute"             |
     Then the response should have '200' status code and the returned pet should be exactly
         | Field    | Value                        |
@@ -22,7 +22,7 @@ Scenario: A pet can be created with all fields and deleted
         | PhotoUrl | https://example.com/dog1.jpg |
         | PhotoUrl | https://example.com/dog2.jpg |
         | Tag      | 1:friendly                   |
-        | Tag      | 2:вакцинирован, 100%         |
+        | Tag      | 2:з щепленням, 100%          |
         | Tag      | 3:small & "cute"             |
     When the created pet named 'Baily' is retrieved via GET /pet/{id}
     Then the response should have '200' status code and the returned pet should be exactly
@@ -34,7 +34,7 @@ Scenario: A pet can be created with all fields and deleted
         | PhotoUrl | https://example.com/dog1.jpg |
         | PhotoUrl | https://example.com/dog2.jpg |
         | Tag      | 1:friendly                   |
-        | Tag      | 2:вакцинирован, 100%         |
+        | Tag      | 2:з щепленням, 100%          |
         | Tag      | 3:small & "cute"             |
     When the created pet named 'Baily' is deleted via DELETE /pet/{id}
     Then the response status should be '200'
@@ -67,46 +67,46 @@ Scenario Outline: A pet can be created and deleted with each status value
     And the response message should be 'Pet not found'
 
     Examples:
-        | status    | name             | id    |
-        | available | Rex              | 20001 |
-        | pending   | Тузик            | 20002 |
-        | sold      | Señor Bigotes 🐶 | 20003 |
+        | status    | name          | id    |
+        | available | Hachiko       | 20001 |
+        | pending   | Кіт у чоботях | 20002 |
+        | sold      | Smaug 🐉      | 20003 |
 
 Scenario: Tags and photo URLs can be reused by several pets and stay after one pet is deleted
     When pet is created with the following values via POST /pet
         | Field    | Value                          |
         | Id       | {run_id_int}11111              |
-        | Name     | Rex                            |
+        | Name     | Garfield                       |
         | PhotoUrl | https://example.com/shared.jpg |
-        | Tag      | 1:good boy & friendly          |
+        | Tag      | 1:très friendly & fluffy       |
     And pet is created with the following values via POST /pet
         | Field    | Value                          |
         | Id       | {run_id_int}22222              |
-        | Name     | Max-Müller (Jr.)               |
+        | Name     | Beethoven (1992)               |
         | PhotoUrl | https://example.com/shared.jpg |
-        | Tag      | 1:good boy & friendly          |
+        | Tag      | 1:très friendly & fluffy       |
     Then the response should have '200' status code and the returned pet should be exactly
         | Field    | Value                          |
         | Id       | {run_id_int}22222              |
-        | Name     | Max-Müller (Jr.)               |
+        | Name     | Beethoven (1992)               |
         | PhotoUrl | https://example.com/shared.jpg |
-        | Tag      | 1:good boy & friendly          |
-    When the created pet named 'Rex' is retrieved via GET /pet/{id}
+        | Tag      | 1:très friendly & fluffy       |
+    When the created pet named 'Garfield' is retrieved via GET /pet/{id}
     Then the response should have '200' status code and the returned pet should be exactly
         | Field    | Value                          |
         | Id       | {run_id_int}11111              |
-        | Name     | Rex                            |
+        | Name     | Garfield                       |
         | PhotoUrl | https://example.com/shared.jpg |
-        | Tag      | 1:good boy & friendly          |
-    When the created pet named 'Rex' is deleted via DELETE /pet/{id}
+        | Tag      | 1:très friendly & fluffy       |
+    When the created pet named 'Garfield' is deleted via DELETE /pet/{id}
     Then the response status should be '200'
-    When the created pet named 'Max-Müller (Jr.)' is retrieved via GET /pet/{id}
+    When the created pet named 'Beethoven (1992)' is retrieved via GET /pet/{id}
     Then the response should have '200' status code and the returned pet should be exactly
         | Field    | Value                          |
         | Id       | {run_id_int}22222              |
-        | Name     | Max-Müller (Jr.)               |
+        | Name     | Beethoven (1992)               |
         | PhotoUrl | https://example.com/shared.jpg |
-        | Tag      | 1:good boy & friendly          |
+        | Tag      | 1:très friendly & fluffy       |
 
 @bug:BUG-002
 Scenario: Pets created without an ID get their own generated IDs
@@ -142,19 +142,19 @@ Scenario: Creating a pet with an existing ID is rejected and the existing pet is
     When pet is created with the following values via POST /pet
         | Field  | Value             |
         | Id     | {run_id_int}12348 |
-        | Name   | First             |
+        | Name   | Norbert           |
         | Status | available         |
     And pet is created with the following values via POST /pet
         | Field  | Value             |
         | Id     | {run_id_int}12348 |
-        | Name   | Second            |
+        | Name   | Mushu             |
         | Status | sold              |
     Then the response status should be '409'
-    When the created pet named 'First' is retrieved via GET /pet/{id}
+    When the created pet named 'Norbert' is retrieved via GET /pet/{id}
     Then the response should have '200' status code and the returned pet should be exactly
         | Field  | Value             |
         | Id     | {run_id_int}12348 |
-        | Name   | First             |
+        | Name   | Norbert           |
         | Status | available         |
 
 @bug:BUG-003

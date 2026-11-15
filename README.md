@@ -86,25 +86,59 @@ Dependencies point one way only: `Tests -> Api -> Core`.
 - **One log per scenario.** Each request is logged as `METHOD resource -> status` on the test's own thread,
   so every scenario's report contains exactly its own requests and warnings.
 
-## Coverage matrix
+## Coverage
 
-| Endpoint | Case | Scenario | Result |
+Each scenario creates its own pets, checks the `POST` response and the `GET` read-back, and adds delete checks
+where a pet already exists, so no pet is created only to be deleted. Where the Id is known, the full expected
+pet is written in the feature file. Blocked scenarios assert the expected behaviour and are skipped while their
+bug is open.
+
+| # | Scenario | Result |
+|---|---|---|
+| S1 | A pet can be created with all fields and deleted | Pass |
+| S2 | A pet can be created and deleted with each status value (3 examples) | Pass |
+| S3 | Tags and photo URLs can be reused by several pets and stay after one pet is deleted | Pass |
+| S4 | Pets created without an ID get their own generated IDs | Blocked: [BUG-002](bugs/BUG-002.md) |
+| S5 | Creating a pet with an existing ID is rejected and the existing pet is kept | Blocked: [BUG-001](bugs/BUG-001.md) |
+| S6 | An invalid pet is rejected and nothing is stored (2 examples) | Blocked: [BUG-003](bugs/BUG-003.md) |
+| S7 | Getting a pet by a non-numeric ID is rejected as an invalid ID | Blocked: [BUG-004](bugs/BUG-004.md) |
+
+### Coverage matrix
+
+| Input | Equivalence class | Covered by | Status |
 |---|---|---|---|
-| `POST /pet` | All fields (Id, name, status, category, 2 photo URLs, 3 tags) stored as sent | A pet can be created with all fields and deleted | Pass |
-| `POST /pet` | Every status value: `available`, `pending`, `sold` | A pet can be created and deleted with each status value | Pass (3) |
-| `POST /pet` | Tags and photo URLs reused by two pets without affecting each other | Tags and photo URLs can be reused by several pets and stay after one pet is deleted | Pass |
-| `POST /pet` | No Id -> a distinct generated Id per pet | Pets created without an ID get their own generated IDs | Skipped: [BUG-002](bugs/BUG-002.md) |
-| `POST /pet` | Existing Id -> rejected, existing pet kept | Creating a pet with an existing ID is rejected and the existing pet is kept | Skipped: [BUG-001](bugs/BUG-001.md) |
-| `POST /pet` | Missing `name`, unknown `status` -> `405`, nothing stored | An invalid pet is rejected and nothing is stored | Skipped (2): [BUG-003](bugs/BUG-003.md) |
-| `GET /pet/{id}` | Existing pet returned unchanged | covered by every POST scenario | Pass |
-| `GET /pet/{id}` | Deleted pet -> `404 Pet not found` | A pet can be created and deleted with each status value | Pass (3) |
-| `GET /pet/{id}` | Non-numeric Id -> `400 Invalid ID supplied` | Getting a pet by a non-numeric ID is rejected as an invalid ID | Skipped: [BUG-004](bugs/BUG-004.md) |
-| `DELETE /pet/{id}` | Existing pet -> `200`, Id as message | A pet can be created and deleted with each status value | Pass (3) |
-| `DELETE /pet/{id}` | Already deleted -> `404`, empty body | A pet can be created with all fields and deleted | Pass |
-| `DELETE /pet/{id}` | Deleting one pet keeps the shared tag and photo URL on another | Tags and photo URLs can be reused by several pets and stay after one pet is deleted | Pass |
+| `id` (body) | explicit, new | S1, S2, S3 | Pass |
+| `id` (body) | explicit, already used | S5 | Blocked: BUG-001 |
+| `id` (body) | not sent (generated) | S4 | Blocked: BUG-002 |
+| `id` (path) | stored pet | S1, S2, S3 | Pass |
+| `id` (path) | deleted pet | S1, S2 | Pass |
+| `id` (path) | non-numeric | S7 | Blocked: BUG-004 |
+| `name` | Latin, Cyrillic, emoji, digits and brackets | S1, S2, S3 | Pass |
+| `name` | missing (required) | S6 | Blocked: BUG-003 |
+| `status` | `available`, `pending`, `sold` | S2 | Pass |
+| `status` | not sent | S3 | Pass |
+| `status` | not in the enum | S6 | Blocked: BUG-003 |
+| `category` | with id / not sent | S1 / S2, S3 | Pass |
+| `photoUrls` | several / empty / shared by two pets | S1 / S2 / S3 | Pass |
+| `tags` | several with ids and special characters (Cyrillic, accents, `& " % ,`) | S1, S3 | Pass |
+| `tags` | empty / shared by two pets | S2 / S3 | Pass |
+| `DELETE` | existing pet -> `200`, Id as message | S2 (status only: S1, S3) | Pass |
+| `DELETE` | already deleted -> `404`, empty body | S1 | Pass |
+| `DELETE` | one of two pets sharing a tag and photo URL | S3 | Pass |
 
-Not automated on purpose: `DELETE` with/without the optional `api_key` header, and malformed JSON bodies
-(they would need a raw-body client method).
+Not covered: the `api_key` header on `DELETE`, malformed JSON, boundary values (Id `0`, negative, beyond int64,
+very long strings), `PUT /pet` and `GET /pet/findByStatus`.
+
+### Trade-offs
+
+- Exact expected pets repeat the request table (three times in S1): verbose, but every checked value is
+  visible in the feature file.
+- Delete checks live inside creation scenarios: fewer pets on the shared server, but a failed delete also fails
+  that scenario.
+- Blocked scenarios are skipped, not run as known failures: no side effects on the shared server, but a fix is
+  only noticed by running them with the gate off.
+- `{run_id_int}` makes Id collisions on the public server unlikely, not impossible; there are no retries.
+- A pet addressed by name in a step cannot have an apostrophe in its name.
 
 ## Test report
 
