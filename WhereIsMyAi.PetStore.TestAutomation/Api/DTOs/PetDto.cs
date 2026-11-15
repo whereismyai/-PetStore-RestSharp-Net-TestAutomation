@@ -24,21 +24,3 @@ public class PetDto
     [JsonPropertyName("status")]
     public string? Status { get; set; }
 }
-
-public class CategoryDto
-{
-    [JsonPropertyName("id")]
-    public long? Id { get; set; }
-
-    [JsonPropertyName("name")]
-    public string? Name { get; set; }
-}
-
-public class TagDto
-{
-    [JsonPropertyName("id")]
-    public long? Id { get; set; }
-
-    [JsonPropertyName("name")]
-    public string? Name { get; set; }
-}

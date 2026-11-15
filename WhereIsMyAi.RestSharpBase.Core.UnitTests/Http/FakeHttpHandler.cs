@@ -4,7 +4,7 @@ using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace WhereIsMyAi.RestSharpBase.Core.Tests.Http;
+namespace WhereIsMyAi.RestSharpBase.Core.UnitTests.Http;
 
 /// <summary>Records the last request as it went on the wire and answers with a fixed response, or throws (transport failure).</summary>
 public sealed class FakeHttpHandler(Func<HttpResponseMessage>? respond = null) : HttpMessageHandler

@@ -4,7 +4,7 @@ using FluentAssertions;
 using NUnit.Framework;
 using WhereIsMyAi.RestSharpBase.Core.Helpers;
 
-namespace WhereIsMyAi.RestSharpBase.Core.Tests.Helpers;
+namespace WhereIsMyAi.RestSharpBase.Core.UnitTests.Helpers;
 
 public class EnvFileHelperTests
 {

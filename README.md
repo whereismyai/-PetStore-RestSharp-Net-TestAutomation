@@ -46,7 +46,7 @@ dotnet test --logger "trx"                        # TRX report with each scenari
 |---|---|
 | `WhereIsMyAi.RestSharpBase.Core` | Project-agnostic base: RestSharp client wrapper, logger, helpers and a small local TMS. It knows nothing about PetStore or any test framework, so other API test projects can reuse it. |
 | `WhereIsMyAi.PetStore.TestAutomation` | Everything PetStore-specific: API client, DTOs, step definitions, hooks, scenario variables, feature files. References Core. |
-| `WhereIsMyAi.RestSharpBase.Core.Tests` | Unit tests for Core: request building, transport failure, malformed JSON, `.env` precedence, bug-gate decisions, a valid `Status` in every `Bugs/*.md`. Fake HTTP handler, no network. A smoke check made entirely with AI assistance, outside the 2-hour scope (see [AI assistance](#ai-assistance)). |
+| `WhereIsMyAi.RestSharpBase.Core.UnitTests` | Unit tests for Core: request building, transport failure, malformed JSON, `.env` precedence, bug-gate decisions, a valid `Status` in every `Bugs/*.md`. Fake HTTP handler, no network. A smoke check made entirely with AI assistance, outside the 2-hour scope (see [AI assistance](#ai-assistance)). |
 
 ```
 WhereIsMyAi.RestSharpBase.Core/
@@ -58,12 +58,12 @@ WhereIsMyAi.RestSharpBase.Core/
   Helpers/                     EnvFileHelper (.env settings), JsonHelper
   Tms/                         Bug, BugRepository (Bugs/*.md), BugGate (skip decision)
 WhereIsMyAi.PetStore.TestAutomation/
-  Api/                         PetStoreConfig, Clients/PetApiClient, DTOs/PetDto
+  Api/                         PetStoreConfig, Clients/PetApiClient, DTOs/PetDto, CategoryDto, TagDto
   RuntimeVariables/            per-scenario state: CreatedPets, LastResponse, RunIdInt
   Steps/                       BaseStep, CommonSteps, PetSteps (regions: creation, retrieval, deletion, checks)
   Hooks/                       BugHooks, CleanupHooks (after scenario)
   Tests/Features/              PetStore_Pet.feature
-WhereIsMyAi.RestSharpBase.Core.Tests/   unit tests per Core folder (FakeHttpHandler)
+WhereIsMyAi.RestSharpBase.Core.UnitTests/   unit tests per Core folder (FakeHttpHandler)
 Bugs/                          local bug repository: one BUG-xxx.md per bug
 ```
 
@@ -228,7 +228,7 @@ maximum, so one pet at the maximum would make them overflow (see Trade-offs). S5
 an AI coding assistant (Claude Code) - code, scenarios and documentation - under my direction and review.
 Every scenario and every bug report was run and verified against the live API.
 
-The Core unit tests (`WhereIsMyAi.RestSharpBase.Core.Tests`) go beyond the 2-hour task: they were created
+The Core unit tests (`WhereIsMyAi.RestSharpBase.Core.UnitTests`) go beyond the 2-hour task: they were created
 entirely with AI assistance, only as a smoke check of the reusable Core, so the required CI check runs
 something deterministic. The PetStore scenarios are the actual deliverable.
 
