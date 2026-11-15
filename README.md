@@ -8,6 +8,7 @@ API, written in C# / .NET 10 with Reqnroll (Gherkin, NUnit runner), RestSharp an
 Automate the main Pet API flows - **create** (`POST /pet`), **read** (`GET /pet/{id}`) and **delete**
 (`DELETE /pet/{id}`) - as readable Gherkin scenarios. They should check what the API really stores, not only
 the status code, clean up after themselves on a shared public server, and document the API defects they find.
+Time box: 2 hours.
 
 ## Requirements
 
@@ -82,14 +83,15 @@ open, and shows the fix as soon as it lands.
   pet's `POST` reply and its `GET` read-back are compared with the whole expected pet, written in the feature
   file. When the Id is known, both must equal it exactly (all fields, category and tag ids, list order). Pets
   with generated Ids are checked against the table too, except for the Id - never against an earlier response,
-  which could repeat a wrong value. The DTO is all-nullable, so a
-  missing `id`, `name`, `photoUrls` or `tags` fails by name instead of becoming a default like `[]`.
+  which could repeat a wrong value. The DTO is all-nullable, so a missing `id`, `name`, `photoUrls` or `tags`
+  fails by name instead of becoming a default like `[]`.
   Every pet is sent with its required fields (`name`, `photoUrls`) unless that field is what the scenario tests,
   so an invalid-input scenario has exactly one thing wrong.
-  Names and tags are in English, Ukrainian, Spanish and French, with emoji and special characters.
+  Names are in English and Ukrainian, with emoji, digits and brackets; tags add Spanish, French and `& " % ,`.
   Error replies are checked by status and message; the expected message is the spec's description of that
   response (`Pet not found`, `Invalid ID supplied`, `Invalid input`). The only exception is `409` for a
-  duplicate Id, which the spec does not define (see BUG-001).
+  duplicate Id, which the spec does not define (see BUG-001); S1's repeated `DELETE` checks the status only,
+  because its missing message is BUG-005 (S11).
 - **No collisions on a shared server.** Explicit IDs are prefixed with `{run_id_int}`, a random 4-digit
   number generated for each scenario (`{run_id_int}12345` -> `482112345`), in the request, the checks and the
   GET/DELETE steps. The number is logged at the start of the scenario, so the data of a failed run can be found.
@@ -162,8 +164,8 @@ one open bug: they assert the expected behaviour and are skipped while the bug i
 | `DELETE` | one of two pets sharing a tag and photo URL | S4 | Pass |
 
 Not covered: Id `0` and negative Ids (the API replaces them with a generated Id; the spec defines no rule for
-them, so there is nothing to assert), body Ids beyond int64 (the client sends a `long`), an empty `photoUrls` list, the `api_key` header on `DELETE`, malformed JSON, `PUT /pet` and
-`GET /pet/findByStatus`.
+them, so there is nothing to assert), body Ids beyond int64 (the client sends a `long`), an empty `photoUrls`
+list, the `api_key` header on `DELETE`, malformed JSON, `PUT /pet` and `GET /pet/findByStatus`.
 
 ### Trade-offs
 
