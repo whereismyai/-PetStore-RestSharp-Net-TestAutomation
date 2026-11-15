@@ -17,7 +17,7 @@ public class PetSteps(PetApiClient petApi, CreatedPets createdPets, LastResponse
 {
     #region Pet creation - POST /pet
 
-    // Repeated PhotoUrl / Tag rows build lists; Category and Tag take 'id:name' or 'name'; 'null' leaves a field out.
+    // Repeated PhotoUrl / Tag rows build lists; Category and Tag take 'id:name' or 'name'; 'null' leaves a field out (not sent).
     [When(@"^a pet is created with the following values via POST /pet$")]
     public void WhenAPetIsCreatedWithTheFollowingValuesViaPostPet(Table table)
     {
@@ -44,8 +44,8 @@ public class PetSteps(PetApiClient petApi, CreatedPets createdPets, LastResponse
                 case "name": pet.Name = value; break;
                 case "status": pet.Status = value; break;
                 case "category": pet.Category = ParseCategory(value); break;
-                case "photourl": pet.PhotoUrls.Add(value); break;
-                case "tag": pet.Tags.Add(ParseTag(value)); break;
+                case "photourl": (pet.PhotoUrls ??= new()).Add(value); break;
+                case "tag": (pet.Tags ??= new()).Add(ParseTag(value)); break;
                 default: throw new NotSupportedException(
                     $"Field '{row["Field"]}' is not supported. Use Id, Name, Status, Category, PhotoUrl or Tag.");
             }
@@ -113,25 +113,52 @@ public class PetSteps(PetApiClient petApi, CreatedPets createdPets, LastResponse
     // Known Id: the table is the whole expected pet, in the same format as on creation; every field must be equal.
     [Then(@"^the response should have '(\d+)' status code and the returned pet should be exactly$")]
     public void ThenTheResponseShouldHaveStatusCodeAndTheReturnedPetShouldBeExactly(int statusCode, Table table) =>
-        AssertMatches(statusCode, BuildPet(table));
+        AssertMatches(statusCode, ToExpectedPet(table));
 
-    // Generated Id: the whole pet must equal the created one, as the POST returned it.
-    [Then(@"^the response should have '(\d+)' status code and the returned pet should match the created pet named '(.*)'$")]
-    public void ThenTheResponseShouldHaveStatusCodeAndTheReturnedPetShouldMatchTheCreatedPetNamed(int statusCode, string name) =>
-        AssertMatches(statusCode, createdPets.GetPetByName(ReplaceVariables(name)));
+    // Generated Id, POST: every field but the Id must equal the table (never compare with an earlier response).
+    [Then(@"^the response should have '(\d+)' status code and the returned pet should be exactly, with a generated Id$")]
+    public void ThenTheResponseShouldHaveStatusCodeAndTheReturnedPetShouldBeExactlyWithAGeneratedId(int statusCode, Table table) =>
+        ReadPet(statusCode).Should().BeEquivalentTo(ToExpectedPet(table), options => options.WithStrictOrdering().Excluding(pet => pet.Id));
+
+    // Generated Id, later reads: the table plus the Id the POST returned for that pet.
+    [Then(@"^the response should have '(\d+)' status code and the returned pet should be exactly, with the Id of the created pet named '(.*)'$")]
+    public void ThenTheResponseShouldHaveStatusCodeAndTheReturnedPetShouldBeExactlyWithTheIdOfTheCreatedPetNamed(
+        int statusCode, string name, Table table)
+    {
+        var expected = ToExpectedPet(table);
+        expected.Id = createdPets.GetPetIdByName(ReplaceVariables(name));
+        AssertMatches(statusCode, expected);
+    }
 
     [Then(@"^the created pets should have different IDs$")]
     public void ThenTheCreatedPetsShouldHaveDifferentIds() =>
         createdPets.Value.Select(pet => pet.Id).Should().OnlyHaveUniqueItems();
 
+    // The server returns photoUrls and tags as [] when none were sent.
+    private PetDto ToExpectedPet(Table table)
+    {
+        var pet = BuildPet(table);
+        pet.PhotoUrls ??= new();
+        pet.Tags ??= new();
+        return pet;
+    }
+
     private void AssertMatches(int statusCode, PetDto expected) =>
         ReadPet(statusCode).Should().BeEquivalentTo(expected, options => options.WithStrictOrdering());
 
+    // Wrong JSON types (e.g. "id":"7") already fail in ContentAs. The DTO is all-nullable, so a missing property
+    // stays null: the required ones are checked by name here, so the failure says which one is missing.
     private PetDto ReadPet(int statusCode)
     {
         var response = lastResponse.Value;
         ((int)response.StatusCode).Should().Be(statusCode, "response body: {0}", response.Content);
-        return response.ContentAs<PetDto>();
+
+        var pet = response.ContentAs<PetDto>();
+        pet.Id.Should().NotBeNull("'id' must be in the response: {0}", response.Content);
+        pet.Name.Should().NotBeNull("'name' is required: {0}", response.Content);
+        pet.PhotoUrls.Should().NotBeNull("'photoUrls' is required: {0}", response.Content);
+        pet.Tags.Should().NotBeNull("'tags' must be in the response: {0}", response.Content);
+        return pet;
     }
 
     #endregion

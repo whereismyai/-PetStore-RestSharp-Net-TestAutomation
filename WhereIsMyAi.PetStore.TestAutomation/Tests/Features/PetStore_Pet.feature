@@ -143,17 +143,29 @@ Scenario: Pets created without an ID get their own generated IDs
         | Field    | Value     |
         | Name     | Toothless |
         | Category | DRAGONS   |
-    Then the response should have '200' status code
+    Then the response should have '200' status code and the returned pet should be exactly, with a generated Id
+        | Field    | Value     |
+        | Name     | Toothless |
+        | Category | 0:DRAGONS |
     When a pet is created with the following values via POST /pet
         | Field    | Value      |
         | Name     | Stormfly   |
         | Category | NIGHT_FURY |
-    Then the response should have '200' status code
+    Then the response should have '200' status code and the returned pet should be exactly, with a generated Id
+        | Field    | Value        |
+        | Name     | Stormfly     |
+        | Category | 0:NIGHT_FURY |
     And the created pets should have different IDs
     When the created pet named 'Toothless' is retrieved via GET /pet/{id}
-    Then the response should have '200' status code and the returned pet should match the created pet named 'Toothless'
+    Then the response should have '200' status code and the returned pet should be exactly, with the Id of the created pet named 'Toothless'
+        | Field    | Value     |
+        | Name     | Toothless |
+        | Category | 0:DRAGONS |
     When the created pet named 'Stormfly' is retrieved via GET /pet/{id}
-    Then the response should have '200' status code and the returned pet should match the created pet named 'Stormfly'
+    Then the response should have '200' status code and the returned pet should be exactly, with the Id of the created pet named 'Stormfly'
+        | Field    | Value        |
+        | Name     | Stormfly     |
+        | Category | 0:NIGHT_FURY |
 
 @bug:BUG-001
 Scenario: Creating a pet with an existing ID is rejected and the existing pet is kept

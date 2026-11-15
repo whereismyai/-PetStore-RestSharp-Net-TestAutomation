@@ -21,7 +21,7 @@ the status code, clean up after themselves on a shared public server, and docume
 git clone https://github.com/whereismyai/-PetStore-RestSharp-Net-TestAutomation.git
 cd ./-PetStore-RestSharp-Net-TestAutomation
 cp .env.example .env        # BASE_URL=https://petstore.swagger.io/v2, BUGS_REPO_PATH=Bugs
-dotnet test                 # restores, builds both projects and runs all scenarios
+dotnet test                 # restores, builds the solution, runs the Core unit tests and all scenarios
 ```
 
 | `.env` key | Meaning |
@@ -45,10 +45,12 @@ dotnet test --logger "trx"                        # TRX report with each scenari
 |---|---|
 | `WhereIsMyAi.RestSharpBase.Core` | Project-agnostic base: RestSharp client wrapper, logger, helpers and a small local TMS. It knows nothing about PetStore or any test framework, so other API test projects can reuse it. |
 | `WhereIsMyAi.PetStore.TestAutomation` | Everything PetStore-specific: API client, DTOs, step definitions, hooks, scenario variables, feature files. References Core. |
+| `WhereIsMyAi.RestSharpBase.Core.Tests` | Unit tests for Core: request building, transport failure, malformed JSON, `.env` precedence, bug-gate decisions. Fake HTTP handler, no network. |
 
 ```
 WhereIsMyAi.RestSharpBase.Core/
-  Http/RestApiClient.cs        abstract RestSharp wrapper (Get / Post / Put / Delete), logs every request
+  Http/RestApiClient.cs        abstract RestSharp wrapper: takes your RestClient (auth, headers, timeouts) and logger;
+                               Get / Post / Put / Delete, Execute(request) for anything else; logs every request
   Logger/InternalLogger.cs     console logger that writes on the test's own thread
   Extensions/                  StringExtensions (ToLong)
   Helpers/                     EnvFileHelper (.env settings), JsonHelper
@@ -59,6 +61,7 @@ WhereIsMyAi.PetStore.TestAutomation/
   Steps/                       BaseStep, CommonSteps, PetSteps (regions: creation, retrieval, deletion, checks)
   Hooks/                       BugHooks, CleanupHooks (after scenario)
   Tests/Features/              PetStore_Pet.feature
+WhereIsMyAi.RestSharpBase.Core.Tests/   unit tests per Core folder (FakeHttpHandler)
 Bugs/                          local bug repository: one BUG-xxx.md per bug
 ```
 
@@ -68,7 +71,9 @@ Dependencies point one way only: `Tests -> Api -> Core`.
 
 - **Check what is stored, not only the reply.** Every created pet is read back with `GET`. When the Id is known,
   the whole expected pet is written in the feature file and both responses must equal it exactly (all fields,
-  category and tag ids, list order). Only pets with generated Ids are compared with the pet the `POST` returned.
+  category and tag ids, list order). Pets with generated Ids are checked against the table too, except for the
+  Id - never against an earlier response, which could repeat a wrong value. The DTO is all-nullable, so a
+  missing required field (`id`, `name`, `photoUrls`) fails by name instead of becoming a default like `[]`.
   Names and tags are in English, Ukrainian, Spanish and French, with emoji and special characters.
   Error replies are checked by their exact message, not only by the status code.
 - **No collisions on a shared server.** Explicit IDs are prefixed with `{run_id_int}`, a random 4-digit
@@ -157,8 +162,9 @@ them, so there is nothing to assert), Ids beyond int64 (the client sends a `long
 
 `.github/workflows/ci.yml` runs on every pull request into `main`:
 
-- `build` - restores and builds the solution. It is the required check: a PR that does not build cannot be merged.
-- `test` - runs `dotnet test` after a successful build, with `BASE_URL` and `BUGS_REPO_PATH` set in the workflow.
+- `build` - restores and builds the solution, then runs the Core unit tests (no network). It is the required
+  check: a PR that does not build or breaks Core cannot be merged.
+- `test` - runs the PetStore scenarios after a successful build, with `BASE_URL` and `BUGS_REPO_PATH` set in the workflow.
   Deliberately not required: the tests hit a shared public server that the PR does not control, so a red
   test run is shown on the PR but does not block the merge.
 - Skipped scenarios stay visible: each one is a warning annotation, and a grey `Skipped tests` check lists them
@@ -171,6 +177,8 @@ Run on 2026-11-15 against `https://petstore.swagger.io/v2`:
 | Total | Passed | Failed | Skipped (open bug) | Duration |
 |---|---|---|---|---|
 | 14 | 10 | 0 | 4 | ~10 s |
+
+Plus 34 Core unit tests, all passing (~0.1 s).
 
 All 4 skipped scenarios were also run on purpose (with `BUGS_REPO_PATH` pointing to a missing folder). Each
 failed exactly as its bug describes:
