@@ -121,6 +121,11 @@ public class PetSteps(PetApiClient petApi, CreatedPets createdPets, LastResponse
     [When(@"^the last created pet is retrieved via GET /pet/\{id\}$")]
     public void WhenTheLastCreatedPetIsRetrievedViaGetPetId() => GetPet(createdPets.GetLastPetId().ToString());
 
+    // Content negotiation: sends only this media type in Accept; the other GET steps keep the client's default.
+    [When(@"^the last created pet is retrieved with Accept '(.*)' via GET /pet/\{id\}$")]
+    public void WhenTheLastCreatedPetIsRetrievedWithAcceptViaGetPetId(string accept) =>
+        lastResponse.Value = petApi.GetPetById(createdPets.GetLastPetId().ToString(), ReplaceVariables(accept));
+
     private void GetPet(string petId) => lastResponse.Value = petApi.GetPetById(petId);
 
     #endregion
