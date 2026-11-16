@@ -152,7 +152,7 @@ Scenario: Tags and photo URLs can be shared by two pets and stay after one pet i
         | PhotoUrl | https://example.com/shared.jpg |
         | Tag      | 1:muy cariñoso & très fluffy   |
 
-@bug:BUG-002
+@bug:BUG-002 @intermittent
 Scenario: Pets created without an Id or with Id 0 get their own generated Ids
     When a pet is created with the following values via POST /pet
         | Field    | Value                       |

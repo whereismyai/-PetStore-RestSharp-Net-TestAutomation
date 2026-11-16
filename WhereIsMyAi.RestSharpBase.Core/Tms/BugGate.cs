@@ -6,10 +6,11 @@ using WhereIsMyAi.RestSharpBase.Core.Logger;
 
 namespace WhereIsMyAi.RestSharpBase.Core.Tms;
 
-/// <summary>Skip decision for tests tagged bug:&lt;id&gt;: skip while the bug is Open; when it cannot tell, warn and run.</summary>
+/// <summary>Skip decision for tests tagged bug:&lt;id&gt;: skip while the bug is Open, unless also tagged intermittent; when it cannot tell, warn and run.</summary>
 public class BugGate(string? bugRepositoryPath)
 {
     public const string TagPrefix = "bug:";
+    public const string IntermittentTag = "intermittent";
 
     private readonly BugRepository? _repository = bugRepositoryPath == null ? null : new BugRepository(bugRepositoryPath);
 
@@ -18,7 +19,9 @@ public class BugGate(string? bugRepositoryPath)
     /// <summary>The reason to skip the test (its open bug), or null when it must run.</summary>
     public string? GetSkipReason(IEnumerable<string> tags)
     {
-        var bugIds = tags
+        var tagList = tags.ToList();
+        var isIntermittent = tagList.Contains(IntermittentTag, StringComparer.OrdinalIgnoreCase);
+        var bugIds = tagList
             .Where(tag => tag.StartsWith(TagPrefix, StringComparison.OrdinalIgnoreCase))
             .Select(tag => tag[TagPrefix.Length..])
             .ToList();
@@ -45,6 +48,12 @@ public class BugGate(string? bugRepositoryPath)
             {
                 Log.LogWarning("Bug {BugId} has no valid Status (one of {Statuses}) - test runs",
                     bug.Id, string.Join(", ", Enum.GetNames<BugStatus>()));
+                continue;
+            }
+
+            if (bug.IsOpen && isIntermittent)
+            {
+                Log.LogInformation("Bug {BugId} is Open but intermittent - linked test runs, a failure is evidence for the bug", bug.Id);
                 continue;
             }
 
