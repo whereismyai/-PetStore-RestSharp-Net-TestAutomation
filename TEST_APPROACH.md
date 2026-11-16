@@ -78,8 +78,8 @@ the hook would read the status of the blocking ticket from Jira instead of `Bugs
 - **Messages only where the server is known to send them.** In the spec, the `400`, `404` and `405`
   responses have a `description` but no `schema`, and in OpenAPI 2.0 no schema means no response body. So
   the bug scenarios check status codes only. The `message` field is compared exactly in two places, both
-  observations of the demo server: `DELETE` of an existing pet returns its Id, and `GET` of a deleted pet
-  returns `Pet not found` (S2, S3).
+  observations of the demo server: `DELETE` of an existing pet returns its Id (S2, S3), and `GET` of a
+  deleted pet returns `Pet not found` (S2).
 - **Varied test data.** Names in English and Ukrainian, with emoji, digits and brackets; tags add Spanish,
   French and `& " % ,`.
 
