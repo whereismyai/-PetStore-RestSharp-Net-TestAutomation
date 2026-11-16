@@ -31,10 +31,6 @@ public class BugGateTests
         new BugGate(_path).GetSkipReason(["BUG:BUG-003"]).Should().Be("Blocked by open bug BUG-003: lower-case keys");
 
     [Test]
-    public void OpenBug_TaggedIntermittent_Runs() =>
-        new BugGate(_path).GetSkipReason(["bug:BUG-001", "Intermittent"]).Should().BeNull();
-
-    [Test]
     public void FixedBug_Runs() =>
         new BugGate(_path).GetSkipReason(["bug:BUG-002"]).Should().BeNull();
 

@@ -5,6 +5,9 @@ Feature: Pet endpoints
     Spanish and French with special characters (& " % ,).
 
 Scenario: A pet can be created with all fields and deleted only once
+    Given the pets with the following Ids do not exist
+        | Id                |
+        | {run_id_int}12345 |
     When a pet is created with the following values via POST /pet
         | Field    | Value                        |
         | Id       | {run_id_int}12345            |
@@ -45,6 +48,9 @@ Scenario: A pet can be created with all fields and deleted only once
     Then the response should have '404' status code
 
 Scenario Outline: A pet can be created and deleted with each status value
+    Given the pets with the following Ids do not exist
+        | Id               |
+        | {run_id_int}<id> |
     When a pet is created with the following values via POST /pet
         | Field    | Value                       |
         | Id       | {run_id_int}<id>            |
@@ -78,6 +84,9 @@ Scenario Outline: A pet can be created and deleted with each status value
         | sold, name with emoji      | 20003 | Smaug 🐉      | sold      |
 
 Scenario Outline: A pet can be created and deleted with boundary Ids and name lengths
+    Given the pets with the following Ids do not exist
+        | Id   |
+        | <id> |
     When a pet is created with the following values via POST /pet
         | Field    | Value                       |
         | Id       | <id>                        |
@@ -111,6 +120,10 @@ Scenario Outline: A pet can be created and deleted with boundary Ids and name le
         | smallest positive Id | 1  | Lassie |
 
 Scenario: Tags and photo URLs can be shared by two pets and stay after one pet is deleted
+    Given the pets with the following Ids do not exist
+        | Id                |
+        | {run_id_int}11111 |
+        | {run_id_int}22222 |
     When a pet is created with the following values via POST /pet
         | Field    | Value                          |
         | Id       | {run_id_int}11111              |
@@ -152,7 +165,7 @@ Scenario: Tags and photo URLs can be shared by two pets and stay after one pet i
         | PhotoUrl | https://example.com/shared.jpg |
         | Tag      | 1:muy cariñoso & très fluffy   |
 
-@bug:BUG-002 @intermittent
+@bug:BUG-002
 Scenario: Pets created without an Id or with Id 0 get their own generated Ids
     When a pet is created with the following values via POST /pet
         | Field    | Value                       |
@@ -191,6 +204,9 @@ Scenario: Pets created without an Id or with Id 0 get their own generated Ids
 
 @bug:BUG-001
 Scenario: Creating a pet with an existing Id is rejected with 409 Conflict
+    Given the pets with the following Ids do not exist
+        | Id                |
+        | {run_id_int}12348 |
     When a pet is created with the following values via POST /pet
         | Field    | Value                       |
         | Id       | {run_id_int}12348           |
@@ -208,6 +224,9 @@ Scenario: Creating a pet with an existing Id is rejected with 409 Conflict
 
 @bug:BUG-001
 Scenario: Creating a pet with an existing Id keeps the existing pet
+    Given the pets with the following Ids do not exist
+        | Id                |
+        | {run_id_int}12348 |
     When a pet is created with the following values via POST /pet
         | Field    | Value                       |
         | Id       | {run_id_int}12348           |
@@ -230,6 +249,9 @@ Scenario: Creating a pet with an existing Id keeps the existing pet
 
 @bug:BUG-003
 Scenario Outline: An invalid pet is rejected with 405 Invalid input
+    Given the pets with the following Ids do not exist
+        | Id               |
+        | {run_id_int}<id> |
     When a pet is created with the following values via POST /pet
         | Field    | Value            |
         | Id       | {run_id_int}<id> |
@@ -247,6 +269,9 @@ Scenario Outline: An invalid pet is rejected with 405 Invalid input
 
 @bug:BUG-003
 Scenario Outline: An invalid pet is not stored
+    Given the pets with the following Ids do not exist
+        | Id               |
+        | {run_id_int}<id> |
     When a pet is created with the following values via POST /pet
         | Field    | Value            |
         | Id       | {run_id_int}<id> |
@@ -287,6 +312,9 @@ Scenario Outline: Deleting a pet by an invalid Id is rejected with 400 Invalid I
 
 @bug:BUG-005
 Scenario: Deleting a pet that does not exist is answered with 404 Pet not found
+    Given the pets with the following Ids do not exist
+        | Id                |
+        | {run_id_int}99999 |
     When the pet with Id '{run_id_int}99999' is deleted via DELETE /pet/{id}
     Then the response should have '404' status code
     And the response message should be 'Pet not found'

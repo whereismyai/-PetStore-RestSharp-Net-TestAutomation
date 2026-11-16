@@ -1,11 +1,14 @@
 using System;
 using System.Linq;
+using System.Net;
 using FluentAssertions;
+using Microsoft.Extensions.Logging;
 using WhereIsMyAi.PetStore.TestAutomation.Api.Clients;
 using WhereIsMyAi.PetStore.TestAutomation.Api.DTOs;
 using WhereIsMyAi.PetStore.TestAutomation.RuntimeVariables;
 using WhereIsMyAi.RestSharpBase.Core.Extensions;
 using WhereIsMyAi.RestSharpBase.Core.Helpers;
+using WhereIsMyAi.RestSharpBase.Core.Logger;
 using Reqnroll;
 
 namespace WhereIsMyAi.PetStore.TestAutomation.Steps;
@@ -15,6 +18,32 @@ namespace WhereIsMyAi.PetStore.TestAutomation.Steps;
 public class PetSteps(PetApiClient petApi, CreatedPets createdPets, LastResponse lastResponse, RunIdInt runIdInt)
     : BaseStep(runIdInt)
 {
+    private static ILogger Log => InternalLogger.Logger;
+
+    #region Preconditions
+
+    // Table 'Id', one row per valid Id the scenario uses, before its first request: GET must be 404; a 200 (leftover pet) is deleted and rechecked.
+    [Given(@"^the pets with the following Ids do not exist$")]
+    public void GivenThePetsWithTheFollowingIdsDoNotExist(Table table)
+    {
+        foreach (var row in table.Rows)
+            EnsurePetDoesNotExist(ReplaceVariables(row["Id"]));
+    }
+
+    private void EnsurePetDoesNotExist(string id)
+    {
+        var found = petApi.GetPetById(id);
+        if (found.StatusCode == HttpStatusCode.NotFound)
+            return;
+
+        found.StatusCode.Should().Be(HttpStatusCode.OK, "precondition GET /pet/{0} returned: {1}", id, found.Content);
+        Log.LogWarning("Pet {PetId} already exists before the scenario (earlier run or another user) - deleting it", id);
+        petApi.DeletePetById(id).StatusCode.Should().Be(HttpStatusCode.OK, "precondition DELETE /pet/{0} must remove the pet", id);
+        petApi.GetPetById(id).StatusCode.Should().Be(HttpStatusCode.NotFound, "pet {0} must be gone before the scenario starts", id);
+    }
+
+    #endregion
+
     #region Pet creation - POST /pet
 
     // Repeated PhotoUrl / Tag rows build lists; Category and Tag take 'id:name' or 'name'; 'null' leaves a field out (not sent).
