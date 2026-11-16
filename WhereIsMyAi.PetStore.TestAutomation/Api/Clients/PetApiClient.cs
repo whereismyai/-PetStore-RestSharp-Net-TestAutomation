@@ -12,5 +12,9 @@ public class PetApiClient() : RestApiClient(PetStoreConfig.BaseUrl)
     // String Ids, so tests can send invalid ones ("abc").
     public RestResponse GetPetById(string petId) => Get($"/pet/{petId}");
 
+    // Asks for one media type; without it RestSharp's default Accept lists JSON first, then XML.
+    public RestResponse GetPetById(string petId, string accept) =>
+        Execute(new RestRequest($"/pet/{petId}").AddHeader(KnownHeaders.Accept, accept));
+
     public RestResponse DeletePetById(string petId) => Delete($"/pet/{petId}");
 }

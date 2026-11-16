@@ -9,32 +9,35 @@ Run on 2026-11-16 against `https://petstore.swagger.io/v2`:
 
 | Total | Passed | Failed | Skipped (open bug) | Duration |
 |---|---|---|---|---|
-| 19 | 9 | 0 | 10 | ~11 s |
+| 21 | 10 | 0 | 11 | ~11 s |
 
 Plus 44 Core unit tests, all passing (~0.1 s).
 
 - **Green run.** Every test that can pass on today's API passes.
-- **10 skipped test cases are not gaps.** Each one asserts the correct behaviour for one of 4 open API bugs and
+- **11 skipped test cases are not gaps.** Each one asserts the correct behaviour for one of 5 open API bugs and
   stays skipped until that bug is fixed. A skipped test means "not verified on the current build", and its skip
   reason names the bug.
 
 ## Results by scenario
 
-A scenario outline runs once per `Examples` row, so 10 scenarios give 19 test cases.
+A scenario outline runs once per `Examples` row, so 12 scenarios give 21 test cases. The scenarios are split
+into three feature files, one category each (see [TEST_APPROACH.md](TEST_APPROACH.md#three-feature-files-one-question-each)).
 
-| # | Scenario | Test cases | Result |
-|---|---|---|---|
-| S1 | A pet can be created with all fields and deleted only once | 1 | Pass |
-| S2 | A pet can be created and deleted with each status value | 3 | Pass |
-| S3 | A pet can be created and deleted with boundary Ids and name lengths | 4 | Pass |
-| S4 | Tags and photo URLs can be shared by two pets and stay after one pet is deleted | 1 | Pass |
-| S5 | Pets created without an Id or with Id 0 get their own generated Ids | 1 | Skipped: [BUG-002](Bugs/BUG-002.md) |
-| S6 | Creating a pet with an existing Id is rejected with 409 Conflict | 1 | Skipped: [BUG-001](Bugs/BUG-001.md) |
-| S7 | Creating a pet with an existing Id keeps the existing pet | 1 | Skipped: [BUG-001](Bugs/BUG-001.md) |
-| S8 | An invalid pet is rejected with 405 Invalid input and not stored | 3 | Skipped: [BUG-003](Bugs/BUG-003.md) |
-| S9 | Getting a pet by an invalid Id is rejected with 400 | 2 | Skipped: [BUG-004](Bugs/BUG-004.md) |
-| S10 | Deleting a pet by an invalid Id is rejected with 400 | 2 | Skipped: [BUG-004](Bugs/BUG-004.md) |
-| | **Total** | **19** | **9 pass, 10 skipped** |
+| # | Category | Scenario | Test cases | Result |
+|---|---|---|---|---|
+| S1 | e2e | A pet can be created with all fields and deleted only once | 1 | Pass |
+| S2 | e2e | A pet can be created and deleted with each status value | 3 | Pass |
+| S3 | e2e | Tags and photo URLs can be shared by two pets and stay after one pet is deleted | 1 | Pass |
+| S4 | e2e | Pets created without an Id or with Id 0 get their own generated Ids | 1 | Skipped: [BUG-002](Bugs/BUG-002.md) |
+| S5 | e2e | Creating a pet with an existing Id is rejected with 409 Conflict | 1 | Skipped: [BUG-001](Bugs/BUG-001.md) |
+| S6 | e2e | Creating a pet with an existing Id keeps the existing pet | 1 | Skipped: [BUG-001](Bugs/BUG-001.md) |
+| S7 | validation | A pet can be created and deleted with boundary Ids and name lengths | 4 | Pass |
+| S8 | validation | An invalid pet is rejected with 405 Invalid input and not stored | 3 | Skipped: [BUG-003](Bugs/BUG-003.md) |
+| S9 | validation | Getting a pet by an invalid Id is rejected with 400 | 2 | Skipped: [BUG-004](Bugs/BUG-004.md) |
+| S10 | validation | Deleting a pet by an invalid Id is rejected with 400 | 2 | Skipped: [BUG-004](Bugs/BUG-004.md) |
+| S11 | http | Replies are JSON by default and XML when the Accept header asks for it, until the pet is deleted | 1 | Pass |
+| S12 | http | Getting a pet in a media type the API does not produce is rejected with 406 Not Acceptable | 1 | Skipped: [BUG-006](Bugs/BUG-006.md) |
+| | | **Total** | **21** | **10 pass, 11 skipped** |
 
 ## Coverage matrix
 
@@ -44,33 +47,63 @@ current build.
 
 | Input | Equivalence class or boundary | Covered by | Status |
 |---|---|---|---|
-| `id` (body) | explicit, new | S1, S2, S4 | Pass |
-| `id` (body) | boundaries: `1` (smallest Id stored as sent), 18 digits (above 2^53) | S3 | Pass |
-| `id` (body) | explicit, already used | S6, S7 | Blocked: BUG-001 |
-| `id` (body) | not sent / `0` (the server generates a distinct Id) | S5 | Blocked: BUG-002 |
-| `id` (path) | existing pet | S1-S4 | Pass |
-| `id` (path) | deleted pet: `GET` -> `404` (message `Pet not found`: observation) | S2 | Pass |
+| `id` (body) | explicit, new | S1, S2, S3 | Pass |
+| `id` (body) | boundaries: `1` (smallest Id stored as sent), 18 digits (above 2^53) | S7 | Pass |
+| `id` (body) | explicit, already used | S5, S6 | Blocked: BUG-001 |
+| `id` (body) | not sent / `0` (the server generates a distinct Id) | S4 | Blocked: BUG-002 |
+| `id` (path) | existing pet | S1-S3, S7, S11 | Pass |
+| `id` (path) | deleted pet: `GET` -> `404` (message `Pet not found`: observation) | S2, S11 | Pass |
 | `id` (path) | non-numeric: `GET` / `DELETE` | S9 / S10 | Blocked: BUG-004 |
 | `id` (path) | int64 maximum + 1: `GET` / `DELETE` | S9 / S10 | Blocked: BUG-004 |
-| `name` | English, Ukrainian, emoji, digits and brackets | S1, S2, S4 | Pass |
-| `name` | empty string (accepted: the spec sets no minimum length) | S3 | Pass |
-| `name` | 256 characters | S3 | Pass |
+| `name` | English, Ukrainian, emoji, digits and brackets | S1, S2, S3 | Pass |
+| `name` | empty string (accepted: the spec sets no minimum length) | S7 | Pass |
+| `name` | 256 characters | S7 | Pass |
 | `name` | missing (required) | S8 | Blocked: BUG-003 |
 | `status` | `available`, `pending`, `sold` | S2 | Pass |
-| `status` | not sent | S3, S4 | Pass |
+| `status` | not sent | S3, S7 | Pass |
 | `status` | not in the enum | S8 | Blocked: BUG-003 |
-| `category` | with id / not sent | S1 / S2-S4 | Pass |
-| `category` | name only (id comes back as `0`) | S5 | Blocked: BUG-002 |
-| `photoUrls` | one / several / shared by two pets | S2, S3 / S1 / S4 | Pass |
+| `category` | with id / not sent | S1 / S2, S3, S7 | Pass |
+| `category` | name only (id comes back as `0`) | S4 | Blocked: BUG-002 |
+| `photoUrls` | one / several / shared by two pets | S2, S7 / S1 / S3 | Pass |
 | `photoUrls` | missing (required) | S8 | Blocked: BUG-003 |
-| `tags` | several with ids; Ukrainian, Spanish, French and `& " % ,` | S1, S4 | Pass |
-| `tags` | not sent / shared by two pets | S2, S3 / S4 | Pass |
-| `DELETE` | existing pet -> `200`, Id as message (observation) | S2, S3 (status only: S1, S4) | Pass |
+| `tags` | several with ids; Ukrainian, Spanish, French and `& " % ,` | S1, S3 | Pass |
+| `tags` | not sent / shared by two pets | S2, S7 / S3 | Pass |
+| `DELETE` | existing pet -> `200`, Id as message (observation) | S2, S7 (status only: S1, S3, S11) | Pass |
 | `DELETE` | already deleted -> `404` | S1 | Pass |
-| `DELETE` | one of two pets that share a tag and photo URL | S4 | Pass |
+| `DELETE` | one of two pets that share a tag and photo URL | S3 | Pass |
+| Response `Content-Type` | `application/json` (default `Accept`) on `POST`, `GET` and `DELETE` `200` and `GET` `404` | S11 | Pass |
+| `Accept` | `application/xml` -> `200`, `Content-Type: application/xml` | S11 | Pass |
+| `Accept` | a type the API does not produce (`text/plain`) -> `406` | S12 | Blocked: BUG-006 |
 
-In total: 24 rows: 16 pass, 8 blocked by open bugs. What is deliberately not covered is listed in
+In total: 27 rows: 18 pass, 9 blocked by open bugs. What is deliberately not covered is listed in
 [TEST_APPROACH.md](TEST_APPROACH.md#scope).
+
+## What each step checks
+
+Every expected result has a basis (see [TEST_APPROACH.md](TEST_APPROACH.md#why-we-expect-what-we-expect)):
+**contract** - `swagger.json` says so; **observation** - the spec says nothing, the demo server does it today;
+**assumption** - the spec says nothing, we think the API should do it, to be agreed with the API owners.
+
+| Step | Expected | Basis | Scenarios |
+|---|---|---|---|
+| `Given the pets with the following Ids do not exist` | `GET` -> `404`; a leftover pet (`200`) is deleted, then `GET` -> `404` | contract (`GET` `200` / `404`) | all with a valid Id |
+| `When a pet is created ...` + `status code` | `200` for a valid pet | observation: the spec declares only `405` for `POST /pet` | S1-S7, S11, S12 |
+| `the returned pet should be exactly`, after `POST` | the reply is the pet as sent | observation: the spec gives `POST` no response body; field names, required `name` and `photoUrls`: contract (`Pet`) | S1-S3, S7 |
+| `the returned pet should be exactly`, after `GET` | `200` and the stored pet equals what was sent | contract (`GET` `200` returns a `Pet`) | S1-S3, S7 |
+| Server defaults in an expected pet | `photoUrls` and `tags` are `[]` when not sent; a category or tag sent without an id gets id `0` | observation | S2-S4, S7 |
+| `... with a generated Id`, `... with the Id of the created pet named '<name>'`, `the created pets should have different Ids` | a pet sent without an Id or with `0` gets its own Id and can be read back by it | assumption: one Id, one pet | S4 |
+| Second `POST` with the same Id + `status code` | `409` | assumption | S5 |
+| `GET` after a second `POST` with the same Id | the original pet | assumption: a create does not overwrite | S6 |
+| `When ... is deleted via DELETE /pet/{id}` + `status code` | `200` for an existing pet | observation: the spec declares only `400` and `404` | S1-S3, S7, S11 |
+| `the response message should be '<id>'`, after `DELETE` | the deleted pet's Id | observation | S2, S7 |
+| `DELETE` or `GET` of a deleted pet + `status code` | `404` | contract (`404 Pet not found`) | S1 (`DELETE`); S2, S11 (`GET`) |
+| `the response message should be 'Pet not found'` | exactly `Pet not found` | observation: the `404` has no schema | S2 |
+| `POST` of an invalid pet + `status code` | `405` | contract (`405 Invalid input`; `name` and `photoUrls` required, `status` enum) | S8 |
+| `GET` of a rejected pet + `status code` | `404` | assumption: a rejected pet is not stored | S8 |
+| `GET` / `DELETE` by an invalid Id + `status code` | `400` | contract (`400 Invalid ID supplied`) | S9, S10 |
+| `the response Content-Type should be 'application/json'` | `application/json`, any `charset` | contract (`produces`); JSON rather than XML for the client's default `Accept` (JSON listed first): observation | S11 |
+| `... retrieved with Accept 'application/xml'` + `Content-Type` | `200`, `application/xml` | contract (`produces`) | S11 |
+| `... retrieved with Accept 'text/plain'` + `status code` | `406` | assumption: RFC 9110 allows `406` or ignoring `Accept` | S12 |
 
 ## Do the checks catch wrong behaviour?
 
@@ -97,8 +130,9 @@ folder), to confirm that each bug is still there:
 | [BUG-002](Bugs/BUG-002.md) | a distinct generated Id per pet | on some runs, both pets get `9223372036854775807`, so the second overwrites the first |
 | [BUG-003](Bugs/BUG-003.md) | `405 Invalid input`; nothing stored (assumption) | `200`, a pet without `name`, without `photoUrls` or with `status: flying` is stored |
 | [BUG-004](Bugs/BUG-004.md) | `400` for `GET` and `DELETE` with `abc` or int64 maximum + 1 | `404` with `java.lang.NumberFormatException ...` as the message |
+| [BUG-006](Bugs/BUG-006.md) | `406` for `GET` with `Accept: text/plain` (assumption, to be agreed) | `500` with an HTML page and a Java stack trace |
 
-On 2026-11-16, 9 of the 10 test cases failed exactly as their bug describes. S5 (BUG-002) passed on that run:
+On 2026-11-16, 9 of the 10 test cases failed exactly as their bug describes; S12 (BUG-006, added later that day) failed the same way on its own run. S4 (BUG-002) passed on that run:
 the bug does not reproduce every time.
 
 [BUG-005](Bugs/BUG-005.md) (`DELETE` of a missing pet returns `404` with an empty body) was closed as **not a
@@ -107,4 +141,4 @@ bug**: the spec gives that response no schema, so no body is expected. Its scena
 BUG-002 reproduced on 2026-11-13, 11-14 and 11-16, but not on 11-15. The server is a black box to us and is
 shared with other users, so the cause cannot be confirmed from the outside. The observations fit an overflow: a
 generated Id is the highest existing Id + 1, and other users' pets already fill the Ids just below the int64
-maximum. The bug stays `Open` and S5 stays skipped, so an intermittent server defect does not turn the run red.
+maximum. The bug stays `Open` and S4 stays skipped, so an intermittent server defect does not turn the run red.

@@ -25,4 +25,11 @@ public class CommonSteps(LastResponse lastResponse, RunIdInt runIdInt) : BaseSte
     {
         Response.GetJsonProperty("message").Should().Be(ReplaceVariables(expectedMessage), "response body: {0}", Response.Content);
     }
+
+    // Media type only ('; charset=...' is ignored); RestSharp keeps Content-Type out of Response.Headers.
+    [Then(@"^the response Content-Type should be '(.*)'$")]
+    public void ThenTheResponseContentTypeShouldBe(string expectedContentType)
+    {
+        Response.ContentType.Should().Be(ReplaceVariables(expectedContentType), "response body: {0}", Response.Content);
+    }
 }
