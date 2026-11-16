@@ -28,6 +28,13 @@ becomes an NUnit category, so one group can be run on its own: `dotnet test --fi
 All three also carry `@pet`, the endpoint group. A new check goes into the file whose question it answers. A
 new endpoint group gets its own files, for example `PetStore_Store_E2E.feature`.
 
+Two size limits keep files and scenarios readable. Both are guidelines against extremes, not hard caps:
+
+- **A feature file stays around 200 lines.** A little over is fine (`PetStore_Pet_E2E.feature` has 212); a
+  file that keeps growing is split by question, not by HTTP method.
+- **A scenario has at most 16 steps** (`Given`/`When`/`Then`/`And` lines), the longest today (S11). A longer
+  scenario needs a reason, for example one pet walked through every kind of reply. Otherwise split it.
+
 ## Bugs are covered at the level we can reach
 
 When the suite finds a defect, we cover it at the level available to us: the end-to-end API. Each bug gets a
