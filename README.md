@@ -318,9 +318,10 @@ Dependencies point one way only: `Tests -> Api -> Core`.
 
 ## AI assistance
 
-`WhereIsMyAi.RestSharpBase.Core` started from my own RestSharp template. The rest (code, scenarios and
-documentation) was built with the help of an AI coding assistant (Claude Code), under my direction and review.
-Every scenario and every bug report was run and verified against the live API.
+`WhereIsMyAi.RestSharpBase.Core` started from my own RestSharp template. I built the tests and their
+infrastructure with the help of an AI coding assistant (Claude Code). I made every strategic decision (test
+strategy, architecture, coverage scope, how known bugs are handled), reviewed every line of code, and I am
+accountable for all of it. Every scenario and every bug report was run and verified against the live API.
 
 The Core unit tests (`WhereIsMyAi.RestSharpBase.Core.UnitTests`) go beyond the 2-hour task. They were created
 entirely with AI assistance, only as a smoke check of the reusable Core, so that the required CI check runs
