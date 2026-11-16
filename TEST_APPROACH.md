@@ -55,20 +55,39 @@ the hook would read the status of the blocking ticket from Jira instead of `Bugs
 3. When the API is fixed, set `Status: Fixed`. A bug that stops reproducing without a known fix becomes
    `Status: Closed` with a `Resolution: Cannot reproduce` line. If it comes back, set `Status: Open` again.
 
-## What the checks verify
+## How a scenario checks the API
 
-- **Every expectation has a stated basis.** Each check is one of three kinds, and
-  [TEST_RESULTS.md](TEST_RESULTS.md#results-by-scenario) names the basis of every scenario:
-  - **contract**: written in `swagger.json` (required fields, enums, declared status codes);
-  - **assumption**: a reasonable rule the spec does not state, to be agreed with the API owners (BUG-001's
-    `409` and "create does not overwrite", BUG-002's distinct generated Ids);
-  - **observation**: what the demo server does where the spec says nothing (`DELETE` answers `200`, which the
-    spec does not declare, the messages below, `[]` for lists that were not sent).
-- **What is stored, not only the reply.** In the scenarios that create pets to check them (S1-S5), every pet's
-  `POST` reply and its `GET` read-back are compared with the whole expected pet, written in the feature file.
-  With a known Id, both must match it exactly: all fields, category and tag ids, list order. Pets with
-  generated Ids must match everything except the Id. The expected pet is never taken from an earlier response,
-  because that response could repeat a wrong value.
+We can't see inside the API, so a scenario explores it one step at a time, like exploring the "fog of war". It sends a
+request, checks the answer, and only then takes the next step.
+
+- **Every step has its own expected result.** If an answer is wrong, the scenario stops right there, and the
+  failed step tells you what broke.
+- **The next step checks the one before.** A reply can be wrong, so we don't take it on trust:
+  - after `POST`, a `GET` reads back what was really stored (S1-S5);
+  - after `DELETE`, a `GET` checks the pet is gone (S2), or a second `DELETE` checks there's nothing left to
+    delete (S1);
+  - after deleting one of two pets, a `GET` checks the other one is untouched (S4);
+  - after a rejected `POST`, a `GET` checks nothing was stored (S8).
+
+### Why we expect what we expect
+
+Every expected result has a **basis**: the reason we expect it. It's about the source of the expectation, not
+about which requests a scenario sends.
+
+| Basis | What it means | Example |
+|---|---|---|
+| **contract** | `swagger.json` says so | `GET` of a deleted pet returns `404` |
+| **observation** | The spec says nothing, so we check what the demo server does today | `POST` returns `200` and the pet: the spec only declares `405` |
+| **assumption** | The spec says nothing, but we think the API should do it. To agree with the API owners | A duplicate Id is rejected with `409` (BUG-001) |
+
+[TEST_RESULTS.md](TEST_RESULTS.md#what-each-step-checks) gives the basis of every step.
+
+### What else the checks make sure of
+
+- **The whole pet, written out in full.** Every `POST` reply and `GET` read-back is compared with the complete
+  expected pet from the feature file: all fields, category and tag ids, list order. Pets with generated Ids
+  must match everything except the Id. We never copy the expected pet from an earlier response, because that
+  response could be wrong too.
 - **Missing fields fail by name, in exact case.** The response DTO is all-nullable and JSON is read
   case-sensitively, so a missing `name` or `photoUrls` (required by the contract) or `id` (every pet is read back
   by it) fails with that field's name. A body with `NAME` instead of `name` fails too. `tags` is not required by

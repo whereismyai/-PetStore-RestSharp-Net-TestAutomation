@@ -20,22 +20,21 @@ Plus 44 Core unit tests, all passing (~0.1 s).
 
 ## Results by scenario
 
-A scenario outline runs once per `Examples` row, so 10 scenarios give 19 test cases. **Basis** says where the
-expected behaviour comes from (see [TEST_APPROACH.md](TEST_APPROACH.md#what-the-checks-verify)).
+A scenario outline runs once per `Examples` row, so 10 scenarios give 19 test cases.
 
-| # | Scenario | Test cases | Basis | Result |
-|---|---|---|---|---|
-| S1 | A pet can be created with all fields and deleted only once | 1 | contract; `DELETE` `200`: observation | Pass |
-| S2 | A pet can be created and deleted with each status value | 3 | contract; `DELETE` `200` and messages: observation | Pass |
-| S3 | A pet can be created and deleted with boundary Ids and name lengths | 4 | contract; `DELETE` `200` and message: observation | Pass |
-| S4 | Tags and photo URLs can be shared by two pets and stay after one pet is deleted | 1 | contract; `DELETE` `200`: observation | Pass |
-| S5 | Pets created without an Id or with Id 0 get their own generated Ids | 1 | assumption: one Id, one pet | Skipped: [BUG-002](Bugs/BUG-002.md) |
-| S6 | Creating a pet with an existing Id is rejected with 409 Conflict | 1 | assumption, to be agreed | Skipped: [BUG-001](Bugs/BUG-001.md) |
-| S7 | Creating a pet with an existing Id keeps the existing pet | 1 | assumption, to be agreed | Skipped: [BUG-001](Bugs/BUG-001.md) |
-| S8 | An invalid pet is rejected with 405 Invalid input and not stored | 3 | contract | Skipped: [BUG-003](Bugs/BUG-003.md) |
-| S9 | Getting a pet by an invalid Id is rejected with 400 | 2 | contract | Skipped: [BUG-004](Bugs/BUG-004.md) |
-| S10 | Deleting a pet by an invalid Id is rejected with 400 | 2 | contract | Skipped: [BUG-004](Bugs/BUG-004.md) |
-| | **Total** | **19** | | **9 pass, 10 skipped** |
+| # | Scenario | Test cases | Result |
+|---|---|---|---|
+| S1 | A pet can be created with all fields and deleted only once | 1 | Pass |
+| S2 | A pet can be created and deleted with each status value | 3 | Pass |
+| S3 | A pet can be created and deleted with boundary Ids and name lengths | 4 | Pass |
+| S4 | Tags and photo URLs can be shared by two pets and stay after one pet is deleted | 1 | Pass |
+| S5 | Pets created without an Id or with Id 0 get their own generated Ids | 1 | Skipped: [BUG-002](Bugs/BUG-002.md) |
+| S6 | Creating a pet with an existing Id is rejected with 409 Conflict | 1 | Skipped: [BUG-001](Bugs/BUG-001.md) |
+| S7 | Creating a pet with an existing Id keeps the existing pet | 1 | Skipped: [BUG-001](Bugs/BUG-001.md) |
+| S8 | An invalid pet is rejected with 405 Invalid input and not stored | 3 | Skipped: [BUG-003](Bugs/BUG-003.md) |
+| S9 | Getting a pet by an invalid Id is rejected with 400 | 2 | Skipped: [BUG-004](Bugs/BUG-004.md) |
+| S10 | Deleting a pet by an invalid Id is rejected with 400 | 2 | Skipped: [BUG-004](Bugs/BUG-004.md) |
+| | **Total** | **19** | **9 pass, 10 skipped** |
 
 ## Coverage matrix
 
@@ -96,7 +95,7 @@ folder), to confirm that each bug is still there:
 |---|---|---|
 | [BUG-001](Bugs/BUG-001.md) | `409`, existing pet unchanged (assumption, to be agreed) | `200`, the existing pet is silently overwritten |
 | [BUG-002](Bugs/BUG-002.md) | a distinct generated Id per pet | on some runs, both pets get `9223372036854775807`, so the second overwrites the first |
-| [BUG-003](Bugs/BUG-003.md) | `405 Invalid input`, nothing stored | `200`, a pet without `name`, without `photoUrls` or with `status: flying` is stored |
+| [BUG-003](Bugs/BUG-003.md) | `405 Invalid input`; nothing stored (assumption) | `200`, a pet without `name`, without `photoUrls` or with `status: flying` is stored |
 | [BUG-004](Bugs/BUG-004.md) | `400` for `GET` and `DELETE` with `abc` or int64 maximum + 1 | `404` with `java.lang.NumberFormatException ...` as the message |
 
 On 2026-11-16, 9 of the 10 test cases failed exactly as their bug describes. S5 (BUG-002) passed on that run:
