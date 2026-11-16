@@ -101,6 +101,22 @@ bug. The scenario only runs in the non-blocking CI `test` job, so it never block
 We deliberately do not call it `@flaky`. "Flaky" means the test is unreliable; this test is reliable, and the
 API is not. A flaky label invites people to rerun or ignore a failure, which is wrong for a real defect.
 
+### Raising and closing a bug
+
+1. Add `Bugs/<id>.md`; the file name is the bug id. Only three lines are read, and the rest is free text for
+   steps to reproduce, expected and actual results:
+
+   ```markdown
+   - Id: BUG-006
+   - Status: Open
+   - Title: <short title>
+   ```
+
+2. Tag the scenario that asserts the expected behaviour with `@bug:BUG-006`.
+3. When the API is fixed, set `Status: Fixed`. A bug that stops reproducing without a known fix becomes
+   `Status: Closed` with a `Resolution: Cannot reproduce` line. If it comes back on some runs only, reopen it
+   and add `@intermittent` to its scenario.
+
 To check whether the bugs are fixed, run them with the gate off:
 `BUGS_REPO_PATH=none dotnet test --filter "TestCategory~bug"`.
 
