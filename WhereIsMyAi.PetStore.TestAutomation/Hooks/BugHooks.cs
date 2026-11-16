@@ -5,7 +5,7 @@ using WhereIsMyAi.RestSharpBase.Core.Tms;
 
 namespace WhereIsMyAi.PetStore.TestAutomation.Hooks;
 
-/// <summary>Skips a scenario tagged @bug:&lt;id&gt; while that bug is Open (not when also @intermittent); the decision is Core's <see cref="BugGate"/>.</summary>
+/// <summary>Skips a scenario tagged @bug:&lt;id&gt; while that bug is Open; the decision is Core's <see cref="BugGate"/>.</summary>
 [Binding]
 public class BugHooks(ScenarioContext scenarioContext, IUnitTestRuntimeProvider testRuntime)
 {

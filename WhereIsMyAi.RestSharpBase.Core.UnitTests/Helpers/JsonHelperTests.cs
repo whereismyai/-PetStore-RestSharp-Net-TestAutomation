@@ -18,13 +18,23 @@ public class JsonHelperTests
     }
 
     [Test]
-    public void ContentAs_ReadsAValidBody_CaseInsensitive()
+    public void ContentAs_ReadsAValidBody()
     {
-        var item = Response("""{"ID":7,"name":"Rex","tags":[]}""").ContentAs<ItemDto>();
+        var item = Response("""{"id":7,"name":"Rex","tags":[]}""").ContentAs<ItemDto>();
 
         item.Id.Should().Be(7);
         item.Name.Should().Be("Rex");
         item.Tags.Should().BeEmpty();
+    }
+
+    [Test]
+    public void ContentAs_PropertyNamesAreCaseSensitive()
+    {
+        var item = Response("""{"ID":7,"NAME":"Rex","TAGS":[]}""").ContentAs<ItemDto>();
+
+        item.Id.Should().BeNull("'ID' is not the contract's 'id'");
+        item.Name.Should().BeNull();
+        item.Tags.Should().BeNull();
     }
 
     [Test]

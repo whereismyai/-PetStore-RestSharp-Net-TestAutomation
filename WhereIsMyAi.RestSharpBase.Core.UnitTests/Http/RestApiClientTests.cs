@@ -8,6 +8,7 @@ using Microsoft.Extensions.Logging;
 using NUnit.Framework;
 using RestSharp;
 using WhereIsMyAi.RestSharpBase.Core.Http;
+using WhereIsMyAi.RestSharpBase.Core.UnitTests.Logger;
 
 namespace WhereIsMyAi.RestSharpBase.Core.UnitTests.Http;
 
@@ -138,15 +139,5 @@ public class RestApiClientTests
         public RestResponse CallGet(string resource) => Get(resource);
         public RestResponse CallPost(string resource, object body) => Post(resource, body);
         public RestResponse CallExecute(RestRequest request) => Execute(request);
-    }
-
-    private sealed class ListLogger : ILogger
-    {
-        public List<string> Messages { get; } = new();
-        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
-        public bool IsEnabled(LogLevel logLevel) => true;
-
-        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception,
-            Func<TState, Exception?, string> formatter) => Messages.Add(formatter(state, exception));
     }
 }
