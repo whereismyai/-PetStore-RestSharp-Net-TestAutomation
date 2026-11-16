@@ -168,7 +168,7 @@ public class PetSteps(PetApiClient petApi, CreatedPets createdPets, LastResponse
     public void ThenTheCreatedPetsShouldHaveDifferentIds() =>
         createdPets.Value.Select(pet => pet.Id).Should().OnlyHaveUniqueItems();
 
-    // The server returns photoUrls and tags as [] when none were sent.
+    // Observed server default, not a contract rule: photoUrls and tags come back as [] when none were sent.
     private PetDto ToExpectedPet(Table table)
     {
         var pet = BuildPet(table);
@@ -181,7 +181,7 @@ public class PetSteps(PetApiClient petApi, CreatedPets createdPets, LastResponse
         ReadPet(statusCode).Should().BeEquivalentTo(expected, options => options.WithStrictOrdering(),
             "response body: {0}", lastResponse.Value.Content);
 
-    // Wrong JSON types fail in ContentAs; missing required properties (null in the DTO) fail here by name.
+    // Wrong JSON types fail in ContentAs; required fields (contract) and id (the pet is read back by it) fail here by name, in exact case.
     private PetDto ReadPet(int statusCode)
     {
         var response = lastResponse.Value;
@@ -191,7 +191,6 @@ public class PetSteps(PetApiClient petApi, CreatedPets createdPets, LastResponse
         pet.Id.Should().NotBeNull("'id' must be in the response: {0}", response.Content);
         pet.Name.Should().NotBeNull("'name' is required: {0}", response.Content);
         pet.PhotoUrls.Should().NotBeNull("'photoUrls' is required: {0}", response.Content);
-        pet.Tags.Should().NotBeNull("'tags' must be in the response: {0}", response.Content);
         return pet;
     }
 

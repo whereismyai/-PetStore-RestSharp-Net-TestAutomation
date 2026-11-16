@@ -7,13 +7,13 @@ using WhereIsMyAi.RestSharpBase.Core.Logger;
 namespace WhereIsMyAi.RestSharpBase.Core.Tms;
 
 /// <summary>Skip decision for tests tagged bug:&lt;id&gt;: skip while the bug is Open; when it cannot tell, warn and run.</summary>
-public class BugGate(string? bugRepositoryPath)
+public class BugGate(string? bugRepositoryPath, ILogger? logger = null)
 {
     public const string TagPrefix = "bug:";
 
     private readonly BugRepository? _repository = bugRepositoryPath == null ? null : new BugRepository(bugRepositoryPath);
 
-    private static ILogger Log => InternalLogger.Logger;
+    private readonly ILogger _log = logger ?? InternalLogger.Logger;
 
     /// <summary>The reason to skip the test (its open bug), or null when it must run.</summary>
     public string? GetSkipReason(IEnumerable<string> tags)
@@ -27,7 +27,7 @@ public class BugGate(string? bugRepositoryPath)
 
         if (_repository == null || !_repository.IsAvailable)
         {
-            Log.LogWarning("Bug repository path is unavailable ({Path}) - test linked to {BugIds} runs instead of being skipped",
+            _log.LogWarning("Bug repository path is unavailable ({Path}) - test linked to {BugIds} runs instead of being skipped",
                 _repository?.Path ?? "not configured", string.Join(", ", bugIds));
             return null;
         }
@@ -37,13 +37,13 @@ public class BugGate(string? bugRepositoryPath)
             var bug = _repository.Find(bugId);
             if (bug == null)
             {
-                Log.LogWarning("Bug {BugId} not found in bug repository {Path} - test runs", bugId, _repository.Path);
+                _log.LogWarning("Bug {BugId} not found in bug repository {Path} - test runs", bugId, _repository.Path);
                 continue;
             }
 
             if (bug.Status == null)
             {
-                Log.LogWarning("Bug {BugId} has no valid Status (one of {Statuses}) - test runs",
+                _log.LogWarning("Bug {BugId} has no valid Status (one of {Statuses}) - test runs",
                     bug.Id, string.Join(", ", Enum.GetNames<BugStatus>()));
                 continue;
             }
@@ -51,7 +51,7 @@ public class BugGate(string? bugRepositoryPath)
             if (bug.IsOpen)
                 return $"Blocked by open bug {bug.Id}: {bug.Title}";
 
-            Log.LogInformation("Bug {BugId} is {Status} - linked test runs", bug.Id, bug.Status);
+            _log.LogInformation("Bug {BugId} is {Status} - linked test runs", bug.Id, bug.Status);
         }
 
         return null;

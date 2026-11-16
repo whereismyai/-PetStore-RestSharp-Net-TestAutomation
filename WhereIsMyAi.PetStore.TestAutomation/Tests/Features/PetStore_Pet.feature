@@ -248,7 +248,7 @@ Scenario: Creating a pet with an existing Id keeps the existing pet
         | PhotoUrl | https://example.com/pet.jpg |
 
 @bug:BUG-003
-Scenario Outline: An invalid pet is rejected with 405 Invalid input
+Scenario Outline: An invalid pet is rejected with 405 Invalid input and not stored
     Given the pets with the following Ids do not exist
         | Id               |
         | {run_id_int}<id> |
@@ -259,7 +259,8 @@ Scenario Outline: An invalid pet is rejected with 405 Invalid input
         | Status   | <status>         |
         | PhotoUrl | <photoUrl>       |
     Then the response should have '405' status code
-    And the response message should be 'Invalid input'
+    When the pet with Id '{run_id_int}<id>' is retrieved via GET /pet/{id}
+    Then the response should have '404' status code
 
     Examples:
         | case                       | id    | name | status    | photoUrl                    |
@@ -267,32 +268,10 @@ Scenario Outline: An invalid pet is rejected with 405 Invalid input
         | status not in enum         | 30002 | Rex  | flying    | https://example.com/pet.jpg |
         | missing required photoUrls | 30003 | Rex  | available | null                        |
 
-@bug:BUG-003
-Scenario Outline: An invalid pet is not stored
-    Given the pets with the following Ids do not exist
-        | Id               |
-        | {run_id_int}<id> |
-    When a pet is created with the following values via POST /pet
-        | Field    | Value            |
-        | Id       | {run_id_int}<id> |
-        | Name     | <name>           |
-        | Status   | <status>         |
-        | PhotoUrl | <photoUrl>       |
-    And the pet with Id '{run_id_int}<id>' is retrieved via GET /pet/{id}
-    Then the response should have '404' status code
-    And the response message should be 'Pet not found'
-
-    Examples:
-        | case                       | id    | name | status    | photoUrl                    |
-        | missing required name      | 31001 | null | available | https://example.com/pet.jpg |
-        | status not in enum         | 31002 | Rex  | flying    | https://example.com/pet.jpg |
-        | missing required photoUrls | 31003 | Rex  | available | null                        |
-
 @bug:BUG-004
-Scenario Outline: Getting a pet by an invalid Id is rejected with 400 Invalid ID supplied
+Scenario Outline: Getting a pet by an invalid Id is rejected with 400
     When the pet with Id '<id>' is retrieved via GET /pet/{id}
     Then the response should have '400' status code
-    And the response message should be 'Invalid ID supplied'
 
     Examples:
         | case              | id                  |
@@ -300,21 +279,11 @@ Scenario Outline: Getting a pet by an invalid Id is rejected with 400 Invalid ID
         | int64 maximum + 1 | 9223372036854775808 |
 
 @bug:BUG-004
-Scenario Outline: Deleting a pet by an invalid Id is rejected with 400 Invalid ID supplied
+Scenario Outline: Deleting a pet by an invalid Id is rejected with 400
     When the pet with Id '<id>' is deleted via DELETE /pet/{id}
     Then the response should have '400' status code
-    And the response message should be 'Invalid ID supplied'
 
     Examples:
         | case              | id                  |
         | non-numeric       | abc                 |
         | int64 maximum + 1 | 9223372036854775808 |
-
-@bug:BUG-005
-Scenario: Deleting a pet that does not exist is answered with 404 Pet not found
-    Given the pets with the following Ids do not exist
-        | Id                |
-        | {run_id_int}99999 |
-    When the pet with Id '{run_id_int}99999' is deleted via DELETE /pet/{id}
-    Then the response should have '404' status code
-    And the response message should be 'Pet not found'

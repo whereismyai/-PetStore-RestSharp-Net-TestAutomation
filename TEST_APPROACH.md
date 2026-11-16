@@ -57,20 +57,29 @@ the hook would read the status of the blocking ticket from Jira instead of `Bugs
 
 ## What the checks verify
 
+- **Every expectation has a stated basis.** Each check is one of three kinds, and
+  [TEST_RESULTS.md](TEST_RESULTS.md#results-by-scenario) names the basis of every scenario:
+  - **contract**: written in `swagger.json` (required fields, enums, declared status codes);
+  - **assumption**: a reasonable rule the spec does not state, to be agreed with the API owners (BUG-001's
+    `409` and "create does not overwrite", BUG-002's distinct generated Ids);
+  - **observation**: what the demo server does where the spec says nothing (`DELETE` answers `200`, which the
+    spec does not declare, the messages below, `[]` for lists that were not sent).
 - **What is stored, not only the reply.** In the scenarios that create pets to check them (S1-S5), every pet's
   `POST` reply and its `GET` read-back are compared with the whole expected pet, written in the feature file.
   With a known Id, both must match it exactly: all fields, category and tag ids, list order. Pets with
   generated Ids must match everything except the Id. The expected pet is never taken from an earlier response,
   because that response could repeat a wrong value.
-- **Missing fields fail by name.** The response DTO is all-nullable, so a missing `id`, `name`, `photoUrls`
-  or `tags` fails with that field's name instead of silently becoming a default like `[]`.
+- **Missing fields fail by name, in exact case.** The response DTO is all-nullable and JSON is read
+  case-sensitively, so a missing `name` or `photoUrls` (required by the contract) or `id` (every pet is read back
+  by it) fails with that field's name. A body with `NAME` instead of `name` fails too. `tags` is not required by
+  the contract; when no tags were sent, the expected `[]` is an observed server default.
 - **One fault per negative case.** Every pet is sent with its required fields (`name`, `photoUrls`) unless
   that field is under test, so an invalid-input scenario has exactly one thing wrong.
-- **Exact error messages.** Error replies are checked by status code and by the reply's `message` field,
-  compared exactly. The expected message is the spec's description of that response (`Pet not found`,
-  `Invalid ID supplied`, `Invalid input`). Two exceptions: the spec defines no code for a duplicate Id, so
-  `409` is an assumption (BUG-001); S1's repeated `DELETE` checks the status only, because the missing message
-  is BUG-005 (S12).
+- **Messages only where the server is known to send them.** In the spec, the `400`, `404` and `405`
+  responses have a `description` but no `schema`, and in OpenAPI 2.0 no schema means no response body. So
+  the bug scenarios check status codes only. The `message` field is compared exactly in two places, both
+  observations of the demo server: `DELETE` of an existing pet returns its Id, and `GET` of a deleted pet
+  returns `Pet not found` (S2, S3).
 - **Varied test data.** Names in English and Ukrainian, with emoji, digits and brackets; tags add Spanish,
   French and `& " % ,`.
 
@@ -124,8 +133,9 @@ them), body Ids beyond int64 (the client sends a `long`), an empty `photoUrls` l
   another user's pet `1`, if there is one, and the scenario then creates and deletes its own. That is
   acceptable on a public demo server. Only that example is tagged `@shared-ids` (its own `Examples` block), so
   runs can leave it out.
-- **Two scenarios per bug where the outcome has two parts.** For the duplicate-Id and invalid-pet bugs, one
-  scenario asserts the status code (S6, S8) and the other only what is stored (S7, S9). If the fix returns a
-  different error code, the second scenario still turns green.
+- **Duplicate Id: two scenarios; invalid pet: one.** For a duplicate Id, one scenario asserts the assumed
+  `409` (S6) and the other only that the existing pet is kept (S7), so S7 turns green with any error code. For
+  an invalid pet (S8), "not stored" is checked only after the `405`. A `GET` by the sent Id after an accepted
+  or failed `POST` proves nothing, because the pet could be stored under another Id.
 - **The upper Id boundary is 18 digits, not int64 maximum - 1.** Generated Ids look like the highest Id + 1,
   so a pet near the maximum would make every user's generated Ids overflow and collide (the BUG-002 symptom).
