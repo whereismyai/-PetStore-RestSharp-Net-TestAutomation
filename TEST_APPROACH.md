@@ -46,6 +46,22 @@ Two size limits keep files and scenarios readable. Both are guidelines against e
 - **A scenario has at most 16 steps** (`Given`/`When`/`Then`/`And` lines), the longest today (S24). A longer
   scenario needs a reason, for example one pet walked through every kind of reply. Otherwise split it.
 
+## Smoke suite
+
+The core cases are tagged `@smoke`. They form a quick check (~6 s) that the API works at all, before or instead
+of the full run: `dotnet test --filter "TestCategory=smoke"`.
+
+| Operation | Smoke test cases |
+|---|---|
+| `POST` + `GET` | required fields only (S1), all fields (S2), Id not sent (S4, first row) |
+| `DELETE` | delete, then `GET` and `DELETE` give `404` (S17) |
+| Missing pet | `GET` (S19) and `DELETE` (S20) of a pet that was never created |
+| Invalid input | empty body -> `405` (S13), broken JSON -> `400` (S14) |
+
+A smoke test is never linked to a bug: it must pass on today's API, so a red smoke run means a real outage or
+regression. The tag goes on the scenario, or on its own `Examples` block for a single row (S4), so the smoke
+suite repeats no scenario.
+
 ## Bugs are covered at the level we can reach
 
 When the suite finds a defect, we cover it at the level available to us: the end-to-end API. Each bug gets a

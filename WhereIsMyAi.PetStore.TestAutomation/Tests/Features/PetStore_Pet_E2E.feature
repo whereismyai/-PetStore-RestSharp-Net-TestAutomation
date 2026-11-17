@@ -4,6 +4,7 @@ Feature: Pet end to end
     all fields, each status, generated Ids, tags and photo URLs shared by two pets; names in English and
     Ukrainian with emoji, digits and brackets, tags also in Spanish and French with special characters (& " % ,).
 
+@smoke
 Scenario: A pet can be created with the required fields only
     Given the pets with the following Ids do not exist
         | Id                |
@@ -25,6 +26,7 @@ Scenario: A pet can be created with the required fields only
         | Name     | Rex                         |
         | PhotoUrl | https://example.com/pet.jpg |
 
+@smoke
 Scenario: A pet can be created with all fields
     Given the pets with the following Ids do not exist
         | Id                |
@@ -110,11 +112,15 @@ Scenario Outline: A pet created without a positive Id gets a generated Id
         | Name     | <name>                      |
         | PhotoUrl | https://example.com/pet.jpg |
 
-    Examples:
+    @smoke
+    Examples: Id not sent
         | case        | id   | name      |
         | Id not sent | null | Toothless |
-        | Id 0        | 0    | Stormfly  |
-        | Id -1       | -1   | Hookfang  |
+
+    Examples: Id not positive
+        | case  | id | name     |
+        | Id 0  | 0  | Stormfly |
+        | Id -1 | -1 | Hookfang |
 
 Scenario: Tags and photo URLs can be shared by two pets and stay after one pet is deleted
     Given the pets with the following Ids do not exist

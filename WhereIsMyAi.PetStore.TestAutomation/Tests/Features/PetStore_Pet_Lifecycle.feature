@@ -3,6 +3,7 @@ Feature: Pet lifecycle
     The states a pet goes through (does not exist, exists, deleted) and the transitions between them via
     POST /pet, GET /pet/{id} and DELETE /pet/{id}: allowed ones, and requests on a pet that is not there.
 
+@smoke
 Scenario: A deleted pet can no longer be retrieved or deleted
     Given the pets with the following Ids do not exist
         | Id                |
@@ -47,6 +48,7 @@ Scenario: A pet can be created again with the Id of a deleted pet
         | Status   | sold                        |
         | PhotoUrl | https://example.com/pet.jpg |
 
+@smoke
 Scenario: Getting a pet that was never created returns 404 Pet not found
     Given the pets with the following Ids do not exist
         | Id                |
@@ -55,6 +57,7 @@ Scenario: Getting a pet that was never created returns 404 Pet not found
     Then the response should have '404' status code
     And the response message should be 'Pet not found'
 
+@smoke
 Scenario: Deleting a pet that was never created returns 404
     Given the pets with the following Ids do not exist
         | Id                |

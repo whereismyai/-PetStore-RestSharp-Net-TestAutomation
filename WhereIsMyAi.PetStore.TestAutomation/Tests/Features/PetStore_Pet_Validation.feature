@@ -135,10 +135,12 @@ Scenario Outline: A body that is not a pet is rejected with 405 Invalid input
         | non-numeric Id | {"id": "abc", "name": "Rex", "photoUrls": ["https://example.com/pet.jpg"]} |
         | array of pets  | [{"name": "Rex", "photoUrls": ["https://example.com/pet.jpg"]}]            |
 
+@smoke
 Scenario: A pet without data is rejected with 405 Invalid input
     When a pet is created with an empty 'application/json' body via POST /pet
     Then the response should have '405' status code
 
+@smoke
 Scenario: A pet in broken JSON is rejected with 400
     When a pet is created with the following 'application/json' body via POST /pet
         """

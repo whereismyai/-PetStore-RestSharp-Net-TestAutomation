@@ -11,7 +11,8 @@ Run on 2026-11-17 against `https://petstore.swagger.io/v2`:
 |---|---|---|---|---|
 | 47 | 28 | 0 | 19 | ~26 s |
 
-Plus 44 Core unit tests, all passing (~0.1 s).
+Plus 44 Core unit tests, all passing (~0.1 s). Smoke suite (`@smoke`, marked 🔥 below): 8 test cases, all
+passing (~6 s).
 
 - **Green run.** Every test that can pass on today's API passes.
 - **19 skipped test cases are not gaps.** Each one asserts the correct behaviour for one of 6 open API bugs and
@@ -25,10 +26,10 @@ into four feature files, one category each (see [TEST_APPROACH.md](TEST_APPROACH
 
 | # | Category | Scenario | Test cases | Result |
 |---|---|---|---|---|
-| S1 | e2e | A pet can be created with the required fields only | 1 | Pass |
-| S2 | e2e | A pet can be created with all fields | 1 | Pass |
+| S1 | e2e | 🔥 A pet can be created with the required fields only | 1 | Pass |
+| S2 | e2e | 🔥 A pet can be created with all fields | 1 | Pass |
 | S3 | e2e | A pet can be created with each status value | 3 | Pass |
-| S4 | e2e | A pet created without a positive Id gets a generated Id | 3 | Pass |
+| S4 | e2e | A pet created without a positive Id gets a generated Id (🔥 Id not sent) | 3 | Pass |
 | S5 | e2e | Tags and photo URLs can be shared by two pets and stay after one pet is deleted | 1 | Pass |
 | S6 | e2e | Pets created without an Id or with Id 0 get different generated Ids | 1 | Skipped: [BUG-002](Bugs/BUG-002.md) |
 | S7 | validation | A pet can be created with a boundary Id | 2 | Pass |
@@ -37,14 +38,14 @@ into four feature files, one category each (see [TEST_APPROACH.md](TEST_APPROACH
 | S10 | validation | An invalid pet is rejected with 405 Invalid input and not stored | 6 | Skipped: [BUG-003](Bugs/BUG-003.md) |
 | S11 | validation | A pet with a field of the wrong JSON type is rejected with 405 Invalid input and not stored | 3 | Skipped: [BUG-007](Bugs/BUG-007.md) |
 | S12 | validation | A body that is not a pet is rejected with 405 Invalid input | 2 | Skipped: [BUG-007](Bugs/BUG-007.md) |
-| S13 | validation | A pet without data is rejected with 405 Invalid input | 1 | Pass |
-| S14 | validation | A pet in broken JSON is rejected with 400 | 1 | Pass |
+| S13 | validation | 🔥 A pet without data is rejected with 405 Invalid input | 1 | Pass |
+| S14 | validation | 🔥 A pet in broken JSON is rejected with 400 | 1 | Pass |
 | S15 | validation | Getting a pet by an invalid Id is rejected with 400 | 2 | Skipped: [BUG-004](Bugs/BUG-004.md) |
 | S16 | validation | Deleting a pet by an invalid Id is rejected with 400 | 2 | Skipped: [BUG-004](Bugs/BUG-004.md) |
-| S17 | lifecycle | A deleted pet can no longer be retrieved or deleted | 1 | Pass |
+| S17 | lifecycle | 🔥 A deleted pet can no longer be retrieved or deleted | 1 | Pass |
 | S18 | lifecycle | A pet can be created again with the Id of a deleted pet | 1 | Pass |
-| S19 | lifecycle | Getting a pet that was never created returns 404 Pet not found | 1 | Pass |
-| S20 | lifecycle | Deleting a pet that was never created returns 404 | 1 | Pass |
+| S19 | lifecycle | 🔥 Getting a pet that was never created returns 404 Pet not found | 1 | Pass |
+| S20 | lifecycle | 🔥 Deleting a pet that was never created returns 404 | 1 | Pass |
 | S21 | lifecycle | Getting and deleting a pet by an Id no pet can have returns 404 | 2 | Pass |
 | S22 | lifecycle | Creating a pet with an existing Id is rejected with 409 Conflict | 1 | Skipped: [BUG-001](Bugs/BUG-001.md) |
 | S23 | lifecycle | Creating a pet with an existing Id keeps the existing pet | 1 | Skipped: [BUG-001](Bugs/BUG-001.md) |
