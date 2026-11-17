@@ -17,9 +17,10 @@ The documentation is split into three files. Start with the one that answers you
 | README.md (this file) | How to clone, set up and run the tests, what CI does, how the code is organised | Anyone running the suite or changing the code |
 
 To see what a single test does, open the scenario in its feature file:
-[`PetStore_Pet_E2E.feature`](WhereIsMyAi.PetStore.TestAutomation/Tests/Features/PetStore_Pet_E2E.feature) (storing and deleting),
-[`PetStore_Pet_Validation.feature`](WhereIsMyAi.PetStore.TestAutomation/Tests/Features/PetStore_Pet_Validation.feature) (accepted and rejected input) or
-[`PetStore_Pet_Http.feature`](WhereIsMyAi.PetStore.TestAutomation/Tests/Features/PetStore_Pet_Http.feature) (`Content-Type`, `Accept`). Each bug's full report
+[`PetStore_Pet_E2E.feature`](WhereIsMyAi.PetStore.TestAutomation/Tests/Features/PetStore_Pet_E2E.feature) (what a valid pet stores),
+[`PetStore_Pet_Validation.feature`](WhereIsMyAi.PetStore.TestAutomation/Tests/Features/PetStore_Pet_Validation.feature) (accepted and rejected input),
+[`PetStore_Pet_Lifecycle.feature`](WhereIsMyAi.PetStore.TestAutomation/Tests/Features/PetStore_Pet_Lifecycle.feature) (delete, missing pets, reused and duplicate Ids) or
+[`PetStore_Pet_Http.feature`](WhereIsMyAi.PetStore.TestAutomation/Tests/Features/PetStore_Pet_Http.feature) (`Content-Type`, `Accept`, `api_key`). Each bug's full report
 is in [`Bugs/`](Bugs).
 
 ## The task
@@ -54,7 +55,7 @@ the file, which is how CI sets them.
 Common runs:
 
 ```bash
-dotnet test --filter "TestCategory=e2e"                   # one feature file: e2e, validation or http
+dotnet test --filter "TestCategory=e2e"                   # one feature file: e2e, validation, lifecycle or http
 dotnet test --filter "TestCategory!~bug"                  # skip every bug-linked scenario
 dotnet test --filter "TestCategory~bug"                   # only bug-linked scenarios
 BUGS_REPO_PATH=none dotnet test --filter "TestCategory~bug"   # run bug-linked scenarios to check for fixes
@@ -101,7 +102,7 @@ WhereIsMyAi.PetStore.TestAutomation/
   RuntimeVariables/            per-scenario state: CreatedPets, LastResponse, RunIdInt
   Steps/                       BaseStep, CommonSteps, PetSteps (regions: preconditions, creation, retrieval, deletion, checks)
   Hooks/                       BugHooks, CleanupHooks (after scenario)
-  Tests/Features/              PetStore_Pet_E2E, PetStore_Pet_Validation, PetStore_Pet_Http (.feature)
+  Tests/Features/              PetStore_Pet_E2E, _Validation, _Lifecycle, _Http (.feature)
 WhereIsMyAi.RestSharpBase.Core.UnitTests/   unit tests per Core folder (FakeHttpHandler)
 Bugs/                          local bug repository: one BUG-xxx.md per bug
 ```
