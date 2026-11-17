@@ -62,8 +62,8 @@ of the full run: `dotnet test --filter "TestCategory=smoke"`.
 | Smoke test case | What it covers |
 |---|---|
 | S1, required fields only row | `POST`, `GET`, `DELETE`, then `GET` -> `404 Pet not found` |
-| S3 | generated Id for a pet sent without an Id or with `0`, read back and deleted |
-| S6 | empty body -> `405`, broken JSON -> `400`, nothing stored |
+| S2 | generated Id for a pet sent without an Id or with `0`, read back and deleted |
+| S5 | empty body -> `405`, broken JSON -> `400`, nothing stored |
 | S11 | `GET` and `DELETE` of a pet that does not exist -> `404` |
 
 A smoke test is never linked to a bug: it must pass on today's API, so a red smoke run means a real outage or
@@ -119,10 +119,10 @@ request, checks the answer, and only then takes the next step.
 - **Every step has its own expected result.** If an answer is wrong, the scenario stops right there, and the
   failed step tells you what broke.
 - **The next step checks the one before.** A reply can be wrong, so we don't take it on trust:
-  - after `POST`, a `GET` reads back what was really stored (S1-S5, S12-S16);
+  - after `POST`, a `GET` reads back what was really stored (S1-S4, S6, S12-S16);
   - after `DELETE`, a `GET` checks the pet is gone (S1-S3, S12, S14, S16);
-  - after deleting one of two pets, a `GET` checks the other one is untouched (S2);
-  - after a rejected `POST`, a `GET` checks nothing was stored (S6-S9, S16).
+  - after deleting one of two pets, a `GET` checks the other one is untouched (S3);
+  - after a rejected `POST`, a `GET` checks nothing was stored (S5, S7-S9, S16).
 
 ### Why we expect what we expect
 
@@ -218,7 +218,7 @@ Security headers belong to a separate security scan.
   acceptable on a public demo server. Only that example is tagged `@shared-ids` (its own `Examples` block), so
   runs can leave it out.
 - **"Not stored" is checked only after a rejection.** For a duplicate Id (S13), the `GET` of the original pet
-  runs only after the assumed `409`; for an invalid pet (S6-S9), the `GET` by the sent Id runs only after the
+  runs only after the assumed `409`; for an invalid pet (S5, S7-S9), the `GET` by the sent Id runs only after the
   rejection. A `GET` by the sent Id after an accepted or failed `POST` proves nothing, because the pet could be
   stored under another Id.
 - **The upper Id boundary is 18 digits, not int64 maximum - 1.** Generated Ids look like the highest Id + 1,

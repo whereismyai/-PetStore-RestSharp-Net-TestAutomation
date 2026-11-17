@@ -51,6 +51,40 @@ Scenario Outline: A pet can be created, read back and deleted
         | case                 | id | name   | status |
         | smallest positive Id | 1  | Lassie | null   |
 
+@smoke
+Scenario: A pet created without an Id or with Id 0 gets a generated Id
+    When a pet is created with the following values via POST /pet
+        | Field    | Value                       |
+        | Name     | Toothless                   |
+        | PhotoUrl | https://example.com/pet.jpg |
+    Then the response should have '200' status code and the returned pet should be exactly, with a generated Id
+        | Field    | Value                       |
+        | Name     | Toothless                   |
+        | PhotoUrl | https://example.com/pet.jpg |
+    When the created pet named 'Toothless' is retrieved via GET /pet/{id}
+    Then the response should have '200' status code and the returned pet should be exactly, with the Id of the created pet named 'Toothless'
+        | Field    | Value                       |
+        | Name     | Toothless                   |
+        | PhotoUrl | https://example.com/pet.jpg |
+    When the created pet named 'Toothless' is deleted via DELETE /pet/{id}
+    Then the response should have '200' status code
+    When the created pet named 'Toothless' is retrieved via GET /pet/{id}
+    Then the response should have '404' status code
+    When a pet is created with the following values via POST /pet
+        | Field    | Value                       |
+        | Id       | 0                           |
+        | Name     | Stormfly                    |
+        | PhotoUrl | https://example.com/pet.jpg |
+    Then the response should have '200' status code and the returned pet should be exactly, with a generated Id
+        | Field    | Value                       |
+        | Name     | Stormfly                    |
+        | PhotoUrl | https://example.com/pet.jpg |
+    When the created pet named 'Stormfly' is retrieved via GET /pet/{id}
+    Then the response should have '200' status code and the returned pet should be exactly, with the Id of the created pet named 'Stormfly'
+        | Field    | Value                       |
+        | Name     | Stormfly                    |
+        | PhotoUrl | https://example.com/pet.jpg |
+
 Scenario: Two pets can share tags and photo URLs, and deleting one leaves the other unchanged
     Given the pets with the following Ids do not exist
         | Id                |
@@ -98,40 +132,6 @@ Scenario: Two pets can share tags and photo URLs, and deleting one leaves the ot
         | Name     | Beethoven (1992)               |
         | PhotoUrl | https://example.com/shared.jpg |
         | Tag      | 3:muy cariñoso & très "fluffy" |
-
-@smoke
-Scenario: A pet created without an Id or with Id 0 gets a generated Id
-    When a pet is created with the following values via POST /pet
-        | Field    | Value                       |
-        | Name     | Toothless                   |
-        | PhotoUrl | https://example.com/pet.jpg |
-    Then the response should have '200' status code and the returned pet should be exactly, with a generated Id
-        | Field    | Value                       |
-        | Name     | Toothless                   |
-        | PhotoUrl | https://example.com/pet.jpg |
-    When the created pet named 'Toothless' is retrieved via GET /pet/{id}
-    Then the response should have '200' status code and the returned pet should be exactly, with the Id of the created pet named 'Toothless'
-        | Field    | Value                       |
-        | Name     | Toothless                   |
-        | PhotoUrl | https://example.com/pet.jpg |
-    When the created pet named 'Toothless' is deleted via DELETE /pet/{id}
-    Then the response should have '200' status code
-    When the created pet named 'Toothless' is retrieved via GET /pet/{id}
-    Then the response should have '404' status code
-    When a pet is created with the following values via POST /pet
-        | Field    | Value                       |
-        | Id       | 0                           |
-        | Name     | Stormfly                    |
-        | PhotoUrl | https://example.com/pet.jpg |
-    Then the response should have '200' status code and the returned pet should be exactly, with a generated Id
-        | Field    | Value                       |
-        | Name     | Stormfly                    |
-        | PhotoUrl | https://example.com/pet.jpg |
-    When the created pet named 'Stormfly' is retrieved via GET /pet/{id}
-    Then the response should have '200' status code and the returned pet should be exactly, with the Id of the created pet named 'Stormfly'
-        | Field    | Value                       |
-        | Name     | Stormfly                    |
-        | PhotoUrl | https://example.com/pet.jpg |
 
 @bug:BUG-002
 Scenario: Pets created without a positive Id get different generated Ids

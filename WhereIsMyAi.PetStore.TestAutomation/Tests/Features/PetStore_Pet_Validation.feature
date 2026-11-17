@@ -4,21 +4,6 @@ Feature: Pet input validation
     missing required fields, invalid status values, values of the wrong JSON type, an empty or broken body,
     invalid path Ids. Every rejected pet is looked up afterwards to prove it was not stored.
 
-Scenario: A pet can be created with empty photoUrls and tags lists
-    Given the pets with the following Ids do not exist
-        | Id                |
-        | {run_id_int}51001 |
-    When a pet is created with the following 'application/json' body via POST /pet
-        """
-        {"id": {run_id_int}51001, "name": "Rex", "photoUrls": [], "tags": []}
-        """
-    Then the response should have '200' status code
-    When the last created pet is retrieved via GET /pet/{id}
-    Then the response should have '200' status code and the returned pet should be exactly
-        | Field | Value             |
-        | Id    | {run_id_int}51001 |
-        | Name  | Rex               |
-
 @smoke
 Scenario: A request without a readable pet is rejected and nothing is stored
     Given the pets with the following Ids do not exist
@@ -33,6 +18,21 @@ Scenario: A request without a readable pet is rejected and nothing is stored
     Then the response should have '400' status code
     When the pet with Id '{run_id_int}52001' is retrieved via GET /pet/{id}
     Then the response should have '404' status code
+
+Scenario: A pet can be created with empty photoUrls and tags lists
+    Given the pets with the following Ids do not exist
+        | Id                |
+        | {run_id_int}51001 |
+    When a pet is created with the following 'application/json' body via POST /pet
+        """
+        {"id": {run_id_int}51001, "name": "Rex", "photoUrls": [], "tags": []}
+        """
+    Then the response should have '200' status code
+    When the last created pet is retrieved via GET /pet/{id}
+    Then the response should have '200' status code and the returned pet should be exactly
+        | Field | Value             |
+        | Id    | {run_id_int}51001 |
+        | Name  | Rex               |
 
 @bug:BUG-003
 Scenario: A pet without a required field is rejected with 405 Invalid input and not stored

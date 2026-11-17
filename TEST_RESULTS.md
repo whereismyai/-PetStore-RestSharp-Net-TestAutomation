@@ -27,11 +27,11 @@ into four feature files, one category each (see [TEST_APPROACH.md](TEST_APPROACH
 | # | Category | Scenario | Test cases | Result |
 |---|---|---|---|---|
 | S1 | e2e, smoke (required fields only row) | A pet can be created, read back and deleted | 5 | Pass |
-| S2 | e2e | Two pets can share tags and photo URLs, and deleting one leaves the other unchanged | 1 | Pass |
-| S3 | e2e, smoke | A pet created without an Id or with Id 0 gets a generated Id | 1 | Pass |
+| S2 | e2e, smoke | A pet created without an Id or with Id 0 gets a generated Id | 1 | Pass |
+| S3 | e2e | Two pets can share tags and photo URLs, and deleting one leaves the other unchanged | 1 | Pass |
 | S4 | e2e | Pets created without a positive Id get different generated Ids | 1 | Skipped: [BUG-002](Bugs/BUG-002.md) |
-| S5 | validation | A pet can be created with empty photoUrls and tags lists | 1 | Pass |
-| S6 | validation, smoke | A request without a readable pet is rejected and nothing is stored | 1 | Pass |
+| S5 | validation, smoke | A request without a readable pet is rejected and nothing is stored | 1 | Pass |
+| S6 | validation | A pet can be created with empty photoUrls and tags lists | 1 | Pass |
 | S7 | validation | A pet without a required field is rejected with 405 Invalid input and not stored | 1 | Skipped: [BUG-003](Bugs/BUG-003.md) |
 | S8 | validation | A pet with an invalid status is rejected with 405 Invalid input and not stored | 1 | Skipped: [BUG-003](Bugs/BUG-003.md) |
 | S9 | validation | A pet with a value of the wrong JSON type is rejected with 405 Invalid input and not stored | 1 | Skipped: [BUG-007](Bugs/BUG-007.md) |
@@ -57,33 +57,33 @@ while its bug is open.
 |---|---|---|---|---|
 | Body | DT | `name` and `photoUrls` present (required fields only) | S1 | Pass |
 | Body | DT | `name` missing / `photoUrls` missing / both missing | S7 | Blocked: BUG-003 |
-| Body | EP | all fields | S2 | Pass |
-| Body | EP | empty (no data) -> `405`; broken JSON -> `400` (observation), not stored | S6 | Pass |
+| Body | EP | all fields | S3 | Pass |
+| Body | EP | empty (no data) -> `405`; broken JSON -> `400` (observation), not stored | S5 | Pass |
 | Body | EP | a JSON array instead of one pet | S9 | Blocked: BUG-007 |
-| `id` (body) | EP | explicit, new | S1, S2 | Pass |
-| `id` (body) | EP / BVA | not sent, `0` (the server generates an Id: observation) | S3 | Pass |
+| `id` (body) | EP | explicit, new | S1, S3 | Pass |
+| `id` (body) | EP / BVA | not sent, `0` (the server generates an Id: observation) | S2 | Pass |
 | `id` (body) | BVA | `1` (`@shared-ids`), 18 digits (above 2^53) | S1 | Pass |
 | `id` (body) | EP / BVA | not sent and `-1`: each pet gets a distinct Id | S4 | Blocked: BUG-002 |
 | `id` (body) | EP | not a number (`"abc"`) | S9 | Blocked: BUG-007 |
-| `name` | EP | English, Ukrainian with emoji, digits and brackets | S1, S2 | Pass |
+| `name` | EP | English, Ukrainian with emoji, digits and brackets | S1, S3 | Pass |
 | `name` | BVA | empty, 256 characters (the spec sets no length limit) | S1 | Pass |
 | `status` | EP | `available`, `pending`, `sold`, not sent | S1 | Pass |
 | `status` | EP | not in the enum / wrong case (`Available`) / empty | S8 | Blocked: BUG-003 |
-| `category` | EP | with id / not sent | S2 / S1 | Pass |
+| `category` | EP | with id / not sent | S3 / S1 | Pass |
 | `category` | EP | name only (id comes back as `0`) | S4 | Blocked: BUG-002 |
 | `category` | EP | a string instead of an object | S9 | Blocked: BUG-007 |
-| `photoUrls` | EP | one / several / shared by two pets | S1 / S2 / S2 | Pass |
-| `photoUrls`, `tags` | BVA | empty list `[]` | S5 | Pass |
+| `photoUrls` | EP | one / several / shared by two pets | S1 / S3 / S3 | Pass |
+| `photoUrls`, `tags` | BVA | empty list `[]` | S6 | Pass |
 | `photoUrls` | EP | a string instead of a list | S9 | Blocked: BUG-007 |
-| `tags` | EP | several with ids; Ukrainian, Spanish, French and `& " % ,`; shared by two pets | S2 | Pass |
+| `tags` | EP | several with ids; Ukrainian, Spanish, French and `& " % ,`; shared by two pets | S3 | Pass |
 | `tags` | EP | not sent | S1 | Pass |
-| `id` (path) | EP | existing pet | S1-S3, S5, S12, S14, S16 | Pass |
+| `id` (path) | EP | existing pet | S1-S3, S6, S12, S14, S16 | Pass |
 | `id` (path) | EP / BVA | never created, `0`, `-1`: `GET` -> `404` (`Pet not found`), `DELETE` -> `404` | S11 | Pass |
 | `id` (path) | EP / BVA | non-numeric, int64 maximum + 1: `GET` and `DELETE` | S10 | Blocked: BUG-004 |
 | Pet lifecycle | ST | exists -> deleted (`DELETE` -> `200`, the Id as message) -> `GET` `404 Pet not found` | S1 | Pass |
 | Pet lifecycle | ST | deleted -> exists again (`POST` with the same Id) | S12 | Pass |
 | Pet lifecycle | ST | exists -> `POST` with the same Id -> `409`, existing pet kept | S13 | Blocked: BUG-001 |
-| Pet lifecycle | ST | one of two pets that share a tag and photo URL deleted -> the other unchanged | S2 | Pass |
+| Pet lifecycle | ST | one of two pets that share a tag and photo URL deleted -> the other unchanged | S3 | Pass |
 | Response `Content-Type` | EP | `application/json` (default `Accept`) on `POST`, `GET` and `DELETE` `200` and `GET` `404` | S14 | Pass |
 | `Accept` | EP | `application/xml` -> `200`, `Content-Type: application/xml` | S14 | Pass |
 | `Accept` | EP | a type the API does not produce (`text/plain`) -> `406`, pet still served as JSON | S15 | Blocked: BUG-006 |
@@ -102,16 +102,16 @@ Every expected result has a basis (see [TEST_APPROACH.md](TEST_APPROACH.md#why-w
 | Step | Expected | Basis | Scenarios |
 |---|---|---|---|
 | `Given the pets with the following Ids do not exist` | `GET` -> `404`; a leftover pet (`200`) is deleted, then `GET` -> `404` | contract (`GET` `200` / `404`) | all with a valid Id |
-| `When a pet is created ...` + `status code` | `200` for a valid pet | observation: the spec declares only `405` for `POST /pet` | S1-S5, S12-S16 |
-| `the returned pet should be exactly`, after `POST` | the reply is the pet as sent | observation: the spec gives `POST` no response body; field names, required `name` and `photoUrls`: contract (`Pet`) | S1, S3 |
-| `the returned pet should be exactly`, after `GET` | `200` and the stored pet equals what was sent | contract (`GET` `200` returns a `Pet`) | S1-S5, S12-S16 |
-| Server defaults in an expected pet | `photoUrls` and `tags` are `[]` when not sent; a category or tag sent without an id gets id `0` | observation | S1, S3-S5, S12-S16 |
-| `... with a generated Id`, `... with the Id of the created pet named '<name>'` | a pet sent without an Id, with `0` or with `-1` gets a positive Id and can be read back by it | observation: the spec does not say how Ids are assigned | S3, S4 |
+| `When a pet is created ...` + `status code` | `200` for a valid pet | observation: the spec declares only `405` for `POST /pet` | S1-S4, S6, S12-S16 |
+| `the returned pet should be exactly`, after `POST` | the reply is the pet as sent | observation: the spec gives `POST` no response body; field names, required `name` and `photoUrls`: contract (`Pet`) | S1, S2 |
+| `the returned pet should be exactly`, after `GET` | `200` and the stored pet equals what was sent | contract (`GET` `200` returns a `Pet`) | S1-S4, S6, S12-S16 |
+| Server defaults in an expected pet | `photoUrls` and `tags` are `[]` when not sent; a category or tag sent without an id gets id `0` | observation | S1, S2, S4, S6, S12-S16 |
+| `... with a generated Id`, `... with the Id of the created pet named '<name>'` | a pet sent without an Id, with `0` or with `-1` gets a positive Id and can be read back by it | observation: the spec does not say how Ids are assigned | S2, S4 |
 | `the created pets should have different Ids` | two pets without a positive Id get two Ids | assumption: one Id, one pet | S4 |
-| `POST` of an empty body + `status code` | `405` | contract (`405 Invalid input`) | S6 |
-| `POST` of broken JSON + `status code` | `400` | observation: the spec declares only `405`; `400` is the HTTP code for a malformed request | S6 |
+| `POST` of an empty body + `status code` | `405` | contract (`405 Invalid input`) | S5 |
+| `POST` of broken JSON + `status code` | `400` | observation: the spec declares only `405`; `400` is the HTTP code for a malformed request | S5 |
 | `POST` of an invalid pet + `status code` | `405` | contract (`405 Invalid input`; `name` and `photoUrls` required, `status` enum, `Pet` field types) | S7-S9 |
-| `GET` of a rejected pet + `status code` | `404` | assumption: a rejected pet is not stored | S6-S9, S16 |
+| `GET` of a rejected pet + `status code` | `404` | assumption: a rejected pet is not stored | S5, S7-S9, S16 |
 | `When ... is deleted via DELETE /pet/{id}` + `status code` | `200` for an existing pet, with or without `api_key` | observation: the spec declares only `400` and `404`; `api_key` is an optional header (contract) | S1-S3, S12, S14, S16 |
 | `the response message should be '<id>'`, after `DELETE` | the deleted pet's Id | observation | S1 |
 | `GET` or `DELETE` of a pet that is not there (deleted, never created, `0`, `-1`) + `status code` | `404` | contract (`404 Pet not found`) | S1-S3, S11, S12, S14, S16 |
@@ -128,7 +128,7 @@ Every expected result has a basis (see [TEST_APPROACH.md](TEST_APPROACH.md#why-w
 ## Do the checks catch wrong behaviour?
 
 A passing test only matters if it fails when the API is wrong. On 2026-11-16, the status-value and invalid-pet
-scenarios (today the status rows of S1, and S7-S8; then separate scenarios with 3 cases each) were run against a local mock of the API (not part of this
+scenarios (today the status rows of S1, and S7, S8; then separate scenarios with 3 cases each) were run against a local mock of the API (not part of this
 repository) that answers correctly, and then with one fault at a time:
 
 | Mock behaviour | Status values (3 cases) | Invalid pet (3 cases) |
