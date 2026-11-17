@@ -10,6 +10,7 @@ using WhereIsMyAi.RestSharpBase.Core.Extensions;
 using WhereIsMyAi.RestSharpBase.Core.Helpers;
 using WhereIsMyAi.RestSharpBase.Core.Logger;
 using Reqnroll;
+using RestSharp;
 
 namespace WhereIsMyAi.PetStore.TestAutomation.Steps;
 
@@ -27,7 +28,11 @@ public class PetSteps(PetApiClient petApi, CreatedPets createdPets, LastResponse
     public void GivenThePetsWithTheFollowingIdsDoNotExist(Table table)
     {
         foreach (var row in table.Rows)
-            EnsurePetDoesNotExist(ReplaceVariables(row["Id"]));
+        {
+            var id = ReplaceVariables(row["Id"]);
+            createdPets.SentIds.Add(id.ToLong("Pet Id")); // cleanup deletes it even when a raw-body POST stored it
+            EnsurePetDoesNotExist(id);
+        }
     }
 
     private void EnsurePetDoesNotExist(string id)
@@ -54,10 +59,27 @@ public class PetSteps(PetApiClient petApi, CreatedPets createdPets, LastResponse
         if (pet.Id != null) // recorded before sending: cleanup deletes it even if the reply has a wrong Id or none
             createdPets.SentIds.Add(pet.Id.Value);
 
-        var response = petApi.CreatePet(pet);
-        lastResponse.Value = response;
+        RecordCreation(petApi.CreatePet(pet));
+    }
 
-        if (response.IsSuccessful)
+    // The doc string is sent exactly as written: broken JSON, wrong JSON types or XML. Use for what a table cannot express.
+    [When(@"^a pet is created with the following '(.*)' body via POST /pet$")]
+    public void WhenAPetIsCreatedWithTheFollowingBodyViaPostPet(string contentType, string body) =>
+        RecordCreation(petApi.CreatePet(ReplaceVariables(body), ReplaceVariables(contentType)));
+
+    // Content negotiation on POST: sends only this media type in Accept.
+    [When(@"^a pet is created with the following '(.*)' body and Accept '(.*)' via POST /pet$")]
+    public void WhenAPetIsCreatedWithTheFollowingBodyAndAcceptViaPostPet(string contentType, string accept, string body) =>
+        RecordCreation(petApi.CreatePet(ReplaceVariables(body), ReplaceVariables(contentType), ReplaceVariables(accept)));
+
+    [When(@"^a pet is created with an empty '(.*)' body via POST /pet$")]
+    public void WhenAPetIsCreatedWithAnEmptyBodyViaPostPet(string contentType) =>
+        RecordCreation(petApi.CreatePet("", ReplaceVariables(contentType)));
+
+    private void RecordCreation(RestResponse response)
+    {
+        lastResponse.Value = response;
+        if (response.IsSuccessful && response.ContentType != "application/xml") // an XML reply is checked as text; Given records its Id
             createdPets.Value.Add(response.ContentAs<PetDto>());
     }
 
@@ -99,11 +121,13 @@ public class PetSteps(PetApiClient petApi, CreatedPets createdPets, LastResponse
         return new TagDto { Id = id, Name = name };
     }
 
-    // "1:friendly" -> (1, "friendly"); "friendly" -> (null, "friendly")
-    private static (long? Id, string Name) SplitIdAndName(string value)
+    // "1:friendly" -> (1, "friendly"); "friendly" -> (null, "friendly"); "0:" -> (0, null), no name
+    private static (long? Id, string? Name) SplitIdAndName(string value)
     {
         var parts = value.Split(':', 2);
-        return parts.Length == 2 && long.TryParse(parts[0], out var id) ? (id, parts[1].Trim()) : (null, value.Trim());
+        if (parts.Length == 2 && long.TryParse(parts[0], out var id))
+            return (id, parts[1].Trim() is { Length: > 0 } name ? name : null);
+        return (null, value.Trim());
     }
 
     #endregion
@@ -142,6 +166,11 @@ public class PetSteps(PetApiClient petApi, CreatedPets createdPets, LastResponse
     [When(@"^the last created pet is deleted via DELETE /pet/\{id\}$")]
     public void WhenTheLastCreatedPetIsDeletedViaDeletePetId() => DeletePet(createdPets.GetLastPetId().ToString());
 
+    // The spec defines an optional api_key header for DELETE; the other DELETE steps send none.
+    [When(@"^the pet with Id '(.*)' is deleted with api_key '(.*)' via DELETE /pet/\{id\}$")]
+    public void WhenThePetWithIdIsDeletedWithApiKeyViaDeletePetId(string petId, string apiKey) =>
+        lastResponse.Value = petApi.DeletePetById(ReplaceVariables(petId), ReplaceVariables(apiKey));
+
     private void DeletePet(string petId) => lastResponse.Value = petApi.DeletePetById(petId);
 
     #endregion
@@ -153,11 +182,15 @@ public class PetSteps(PetApiClient petApi, CreatedPets createdPets, LastResponse
     public void ThenTheResponseShouldHaveStatusCodeAndTheReturnedPetShouldBeExactly(int statusCode, Table table) =>
         AssertMatches(statusCode, ToExpectedPet(table));
 
-    // Generated Id, POST: every field but the Id must equal the table (never compare with an earlier response).
+    // Generated Id, POST: a positive Id (observed), and every other field must equal the table (never compare with an earlier response).
     [Then(@"^the response should have '(\d+)' status code and the returned pet should be exactly, with a generated Id$")]
-    public void ThenTheResponseShouldHaveStatusCodeAndTheReturnedPetShouldBeExactlyWithAGeneratedId(int statusCode, Table table) =>
-        ReadPet(statusCode).Should().BeEquivalentTo(ToExpectedPet(table), options => options.WithStrictOrdering().Excluding(pet => pet.Id),
+    public void ThenTheResponseShouldHaveStatusCodeAndTheReturnedPetShouldBeExactlyWithAGeneratedId(int statusCode, Table table)
+    {
+        var pet = ReadPet(statusCode);
+        pet.Id.Should().BePositive("a generated Id is positive: {0}", lastResponse.Value.Content);
+        pet.Should().BeEquivalentTo(ToExpectedPet(table), options => options.WithStrictOrdering().Excluding(p => p.Id),
             "response body: {0}", lastResponse.Value.Content);
+    }
 
     // Generated Id, later reads: the table plus the Id the POST returned for that pet.
     [Then(@"^the response should have '(\d+)' status code and the returned pet should be exactly, with the Id of the created pet named '(.*)'$")]
@@ -167,6 +200,15 @@ public class PetSteps(PetApiClient petApi, CreatedPets createdPets, LastResponse
         var expected = ToExpectedPet(table);
         expected.Id = createdPets.GetPetIdByName(ReplaceVariables(name));
         AssertMatches(statusCode, expected);
+    }
+
+    // XML reply (Accept: application/xml): the doc string is the whole expected body, compared exactly.
+    [Then(@"^the response should have '(\d+)' status code and the returned pet should be exactly this XML$")]
+    public void ThenTheResponseShouldHaveStatusCodeAndTheReturnedPetShouldBeExactlyThisXml(int statusCode, string xml)
+    {
+        var response = lastResponse.Value;
+        ((int)response.StatusCode).Should().Be(statusCode, "response body: {0}", response.Content);
+        response.Content.Should().Be(ReplaceVariables(xml));
     }
 
     [Then(@"^the created pets should have different Ids$")]

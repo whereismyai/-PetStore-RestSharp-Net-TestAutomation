@@ -9,6 +9,13 @@ public class PetApiClient() : RestApiClient(PetStoreConfig.BaseUrl)
 {
     public RestResponse CreatePet(PetDto pet) => Post("/pet", pet);
 
+    // Sends the body exactly as written (broken JSON, wrong JSON types, XML).
+    public RestResponse CreatePet(string body, string contentType) =>
+        Execute(new RestRequest("/pet", Method.Post).AddStringBody(body, contentType));
+
+    public RestResponse CreatePet(string body, string contentType, string accept) =>
+        Execute(new RestRequest("/pet", Method.Post).AddStringBody(body, contentType).AddHeader(KnownHeaders.Accept, accept));
+
     // String Ids, so tests can send invalid ones ("abc").
     public RestResponse GetPetById(string petId) => Get($"/pet/{petId}");
 
@@ -17,4 +24,7 @@ public class PetApiClient() : RestApiClient(PetStoreConfig.BaseUrl)
         Execute(new RestRequest($"/pet/{petId}").AddHeader(KnownHeaders.Accept, accept));
 
     public RestResponse DeletePetById(string petId) => Delete($"/pet/{petId}");
+
+    public RestResponse DeletePetById(string petId, string apiKey) =>
+        Execute(new RestRequest($"/pet/{petId}", Method.Delete).AddHeader("api_key", apiKey));
 }

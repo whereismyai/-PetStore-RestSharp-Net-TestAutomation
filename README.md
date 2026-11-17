@@ -1,133 +1,102 @@
 # PetStore Test Automation
 
-Automated API tests for the **Pet** endpoints of the public [Swagger PetStore](https://petstore.swagger.io) API:
-`POST /pet`, `GET /pet/{id}` and `DELETE /pet/{id}`. The scenarios are written in Gherkin, so you can read what
-each test checks without reading any C#.
+API tests for the **Pet** endpoints of the public [Swagger PetStore](https://petstore.swagger.io):
+`POST /pet`, `GET /pet/{id}` and `DELETE /pet/{id}`. Scenarios are plain Gherkin, so you can read what each
+test checks without reading C#.
 
-Stack: C# / .NET 10, Reqnroll (Gherkin, NUnit runner), RestSharp, FluentAssertions.
+Stack: C# / .NET 10, Reqnroll (Gherkin, NUnit), RestSharp, FluentAssertions.
 
-## How to read these docs
+## Coverage
 
-The documentation is split into three files. Start with the one that answers your question:
+**27 test cases: 13 pass, 14 skipped, 0 fail.** Each skipped test asserts the correct behaviour for one of
+6 open API bugs, and runs again once its bug is fixed. The scenarios S1-S17 are listed in
+[TEST_RESULTS.md](TEST_RESULTS.md#results-by-scenario).
 
-| File | Answers | Best for |
-|---|---|---|
-| [TEST_RESULTS.md](TEST_RESULTS.md) | What passes today, what is covered, which API bugs were found | Tech PMs, QA leads: start here |
-| [TEST_APPROACH.md](TEST_APPROACH.md) | How the tests are designed and why: atomic scenarios, bug handling, safety on a shared server, trade-offs | QA engineers reviewing or extending the suite |
-| README.md (this file) | How to clone, set up and run the tests, what CI does, how the code is organised | Anyone running the suite or changing the code |
+| Area | Technique | Checked on every run | Expected, skipped while the bug is open | Tests |
+|---|---|---|---|---|
+| Create, read back, delete | EP, BVA | required fields only; all fields; each `status`; 256-character name; Ukrainian name with emoji; Ids `1` and 18 digits | | S1, S3 |
+| Generated Id | EP, BVA | no Id, `0`, `-1` get a positive Id | two such pets get different Ids ([BUG-002](Bugs/BUG-002.md)) | S2, S4 |
+| `name` (required) | EP, DT | a value | missing, `null`, `""`, a number ([BUG-003](Bugs/BUG-003.md)) | S1, S7, S9 |
+| `photoUrls` (required) | EP, DT | one, several, `[""]` | missing, `null`, `[]` ([BUG-003](Bugs/BUG-003.md)); a string ([BUG-007](Bugs/BUG-007.md)) | S1, S3, S6, S7, S10 |
+| Both required fields | DT | both present | both missing ([BUG-003](Bugs/BUG-003.md)) | S1, S7 |
+| `status` | EP | `available`, `pending`, `sold`, not sent | `flying`, `Available`, `""` ([BUG-003](Bugs/BUG-003.md)) | S1, S8 |
+| `category` | EP | with id; without id (gets id `0`); `{}`; not sent | a string ([BUG-007](Bugs/BUG-007.md)) | S1-S3, S6, S10 |
+| `tags` | EP, BVA | several; without id (gets id `0`); `[]`; not sent | `null` ([BUG-003](Bugs/BUG-003.md)) | S1-S3, S6, S9 |
+| `id` in the body | EP | explicit; not sent | a decimal ([BUG-003](Bugs/BUG-003.md)); `"abc"` ([BUG-007](Bugs/BUG-007.md)) | S1, S2, S9, S10 |
+| Body | EP, error guessing | unknown field ignored; empty -> `405`; broken JSON or XML -> `400` | an array instead of one pet ([BUG-007](Bugs/BUG-007.md)) | S5, S6, S10 |
+| Path Id | EP, BVA | existing pet; never created, `0`, `-1` -> `404` | `abc`, `1.5`, int64 max + 1 -> `400` ([BUG-004](Bugs/BUG-004.md)) | S11, S12 |
+| Lifecycle | ST | delete -> `404`; delete again -> `404`; reuse a freed Id; delete one of two pets that share tags, the other stays | duplicate Id -> `409`, original kept ([BUG-001](Bugs/BUG-001.md)) | S1, S3, S13, S14 |
+| Media types | EP | JSON by default; `Accept: application/xml` on `GET` and `POST` (whole pet as XML); XML body stored; `text/plain` body -> `415` | `Accept: text/plain` -> `406` ([BUG-006](Bugs/BUG-006.md)) | S15-S17 |
+| `api_key` header on `DELETE` | EP | sent; not sent | | S1, S17 |
 
-To see what a single test does, open the scenario in its feature file:
-[`PetStore_Pet_E2E.feature`](WhereIsMyAi.PetStore.TestAutomation/Tests/Features/PetStore_Pet_E2E.feature) (storing and deleting),
-[`PetStore_Pet_Validation.feature`](WhereIsMyAi.PetStore.TestAutomation/Tests/Features/PetStore_Pet_Validation.feature) (accepted and rejected input) or
-[`PetStore_Pet_Http.feature`](WhereIsMyAi.PetStore.TestAutomation/Tests/Features/PetStore_Pet_Http.feature) (`Content-Type`, `Accept`). Each bug's full report
-is in [`Bugs/`](Bugs).
+Every `POST` or `DELETE` of a pet is followed by a `GET` that verifies what is stored (the whole pet, or `404`).
+EP = equivalence partitioning, BVA = boundary values, DT = decision table, ST = state transitions
+([TEST_APPROACH.md](TEST_APPROACH.md)).
 
-## The task
+Not covered: `PUT /pet`, `GET /pet/findByStatus`, authorization (not in the requirements), body Ids beyond int64.
 
-Automate the main Pet flows (create, read and delete) as readable Gherkin scenarios. The tests must check
-what the API actually stores, not only the status code. They must clean up after themselves on a shared public
-server and document every API defect they find. Time box: 2 hours.
+## Run
 
-## Requirements
-
-- [.NET 10 SDK](https://dotnet.microsoft.com/download)
-- Internet access to `https://petstore.swagger.io`
-- Optional: Rider or Visual Studio with the Reqnroll plugin (Gherkin highlighting, step navigation)
-
-## Setup and run
+Requires the [.NET 10 SDK](https://dotnet.microsoft.com/download) and access to `https://petstore.swagger.io`.
 
 ```bash
 git clone https://github.com/whereismyai/PetStore-RestSharp-Net-TestAutomation.git
 cd ./PetStore-RestSharp-Net-TestAutomation
 cp .env.example .env        # BASE_URL=https://petstore.swagger.io/v2, BUGS_REPO_PATH=Bugs
-dotnet test                 # restores, builds, runs the Core unit tests and all scenarios
+dotnet test                 # builds, runs the Core unit tests and all scenarios
 ```
 
-Settings live in `.env` in the repository root. A real environment variable with the same name overrides
-the file, which is how CI sets them.
-
-| Key | Required | What it does |
-|---|---|---|
-| `BASE_URL` | Yes | The API under test |
-| `BUGS_REPO_PATH` | No | Folder of the local bug repository, relative to `.env` (`Bugs`). Without it, bug-linked scenarios run instead of being skipped, and a warning is logged |
-
-Common runs:
+`.env` holds `BASE_URL` (required) and `BUGS_REPO_PATH` (optional; without it, bug-linked tests run instead of
+being skipped). An environment variable with the same name wins over the file.
 
 ```bash
-dotnet test --filter "TestCategory=e2e"                   # one feature file: e2e, validation or http
-dotnet test --filter "TestCategory!~bug"                  # skip every bug-linked scenario
-dotnet test --filter "TestCategory~bug"                   # only bug-linked scenarios
-BUGS_REPO_PATH=none dotnet test --filter "TestCategory~bug"   # run bug-linked scenarios to check for fixes
-dotnet test --filter "TestCategory!=shared-ids"           # leave out boundary Id 1, which other users may also use
-dotnet test --filter "Name~Deleted"                       # scenarios whose name contains a word
-dotnet test --logger "trx"                                # TRX report with each scenario's log lines
+dotnet test --filter "TestCategory=smoke"                     # 4 core cases, ~5 s
+dotnet test --filter "TestCategory=validation"                # one feature: e2e, validation, lifecycle, http
+dotnet test --filter "TestCategory!~bug"                      # leave out bug-linked tests
+BUGS_REPO_PATH=none dotnet test --filter "TestCategory~bug"   # run bug-linked tests: are the bugs fixed?
+dotnet test --filter "TestCategory!=shared-ids"               # leave out Id 1, which other users share
 ```
 
-A normal run is green: tests linked to an open bug are skipped, not failed. Why, and how to change a bug's
-status, is explained in [TEST_APPROACH.md](TEST_APPROACH.md#bugs-are-covered-at-the-level-we-can-reach).
+## Where to look
 
-## Continuous integration
+| What | Where |
+|---|---|
+| The latest run, every scenario, what each check is based on, the bugs | [TEST_RESULTS.md](TEST_RESULTS.md) |
+| How the tests are designed and why | [TEST_APPROACH.md](TEST_APPROACH.md) |
+| The scenarios themselves | [`Tests/Features/`](WhereIsMyAi.PetStore.TestAutomation/Tests/Features): `_E2E` (valid pets), `_Validation` (accepted and rejected input), `_Lifecycle` (state transitions), `_Http` (headers, media types) |
+| Bug reports | [`Bugs/`](Bugs) |
+
+## CI
 
 `.github/workflows/ci.yml` runs on every pull request into `main`:
 
-- **`build`** restores and builds the solution, then runs the Core unit tests (no network). It is the
-  required check: a PR that does not build or breaks Core cannot be merged.
-- **`test`** runs the PetStore scenarios after a successful build, with `BASE_URL` and `BUGS_REPO_PATH` set in
-  the workflow. It is deliberately not required: the tests hit a shared public server that the PR does not
-  control, so a red run is shown on the PR but does not block the merge.
-- **Skipped scenarios stay visible.** Each one becomes a warning annotation with its bug's id and title, and a
-  grey `Skipped tests` check lists them all (only for PRs from this repository; a fork's token cannot create
-  checks).
+- **`build`** (required): builds the solution and runs the Core unit tests, no network.
+- **`test`** (not required): runs the scenarios against the shared public server, which the PR does not control.
+- Skipped tests show up as warnings with the bug's id and title, plus a grey `Skipped tests` check.
 
 ## Solution layout
 
-| Project | What it contains |
+| Project | Contents |
 |---|---|
-| `WhereIsMyAi.RestSharpBase.Core` | Project-agnostic base: RestSharp client wrapper, logger, helpers and a small local TMS. It knows nothing about PetStore or any test framework, so other API test projects can reuse it. |
-| `WhereIsMyAi.PetStore.TestAutomation` | Everything PetStore-specific: API client, DTOs, step definitions, hooks, scenario variables, feature files. References Core. |
-| `WhereIsMyAi.RestSharpBase.Core.UnitTests` | Unit tests for Core: request building, transport failure, malformed JSON, `.env` precedence, bug-gate decisions, a valid `Status` in every `Bugs/*.md`. Fake HTTP handler, no network. A smoke check made entirely with AI assistance, outside the 2-hour scope (see [AI assistance](#ai-assistance)). |
+| `WhereIsMyAi.RestSharpBase.Core` | Reusable base, no PetStore or test-framework code: RestSharp client wrapper, logger, `.env` and JSON helpers, a small local TMS (`Bugs/*.md` -> skip decision) |
+| `WhereIsMyAi.PetStore.TestAutomation` | Pet API client and DTOs, steps, hooks (bug skip, cleanup), feature files |
+| `WhereIsMyAi.RestSharpBase.Core.UnitTests` | Unit tests for Core, no network; also checks every `Bugs/*.md` has a valid status |
 
-```
-WhereIsMyAi.RestSharpBase.Core/
-  Http/RestApiClient.cs        abstract RestSharp wrapper: takes your RestClient (auth, headers, timeouts) and logger;
-                               Get / Post / Put / Delete, Execute(request) for anything else; logs every request;
-                               disposes the RestClient it was given
-  Logger/InternalLogger.cs     console logger that writes on the test's own thread
-  Extensions/                  StringExtensions (ToLong)
-  Helpers/                     EnvFileHelper (.env settings), JsonHelper
-  Tms/                         Bug, BugRepository (Bugs/*.md), BugGate (skip decision)
-WhereIsMyAi.PetStore.TestAutomation/
-  Api/                         PetStoreConfig, Clients/PetApiClient, DTOs/PetDto, CategoryDto, TagDto
-  RuntimeVariables/            per-scenario state: CreatedPets, LastResponse, RunIdInt
-  Steps/                       BaseStep, CommonSteps, PetSteps (regions: preconditions, creation, retrieval, deletion, checks)
-  Hooks/                       BugHooks, CleanupHooks (after scenario)
-  Tests/Features/              PetStore_Pet_E2E, PetStore_Pet_Validation, PetStore_Pet_Http (.feature)
-WhereIsMyAi.RestSharpBase.Core.UnitTests/   unit tests per Core folder (FakeHttpHandler)
-Bugs/                          local bug repository: one BUG-xxx.md per bug
-```
-
-Dependencies point one way only: `Tests -> Api -> Core`.
+Dependencies point one way: `Tests -> Api -> Core`.
 
 ## AI assistance
 
 `WhereIsMyAi.RestSharpBase.Core` started from my own RestSharp template. I built the tests and their
-infrastructure with the help of an AI coding assistant (Claude Code). I made every strategic decision (test
-strategy, architecture, coverage scope, how known bugs are handled), reviewed every line of code, and I am
-accountable for all of it. Every scenario and every bug report was run and verified against the live API.
+infrastructure with an AI coding assistant (Claude Code). I made every strategic decision (test strategy,
+architecture, coverage scope, how known bugs are handled), reviewed every line, and I am accountable for all of
+it. Every scenario and bug report was run and verified against the live API.
 
-The Core unit tests (`WhereIsMyAi.RestSharpBase.Core.UnitTests`) go beyond the 2-hour task. They were created
-entirely with AI assistance, only as a smoke check of the reusable Core, so that the required CI check runs
-something deterministic. The PetStore scenarios are the actual deliverable.
+The Core unit tests go beyond the 2-hour task: they were created entirely with AI assistance, as a smoke check
+of the reusable Core, so the required CI check runs something deterministic. The PetStore scenarios are the
+deliverable.
 
 ## Next steps
 
-- **More CI triggers.** The workflow runs on pull requests only. Add on-demand runs (`workflow_dispatch`) and a
-  nightly `schedule` (cron) against the public server.
-- **Reporting.** Publish each run's results: TRX as a build artifact, plus a test summary on the workflow and
-  PR page. Then add an HTML report (for example, Allure with its Reqnroll adapter) with each scenario's steps
-  and log lines.
-- **More endpoints.** Store (`GET /store/inventory`, `POST /store/order`, `GET /store/order/{id}`) and User
-  (`POST /user`, `GET /user/{username}`, `PUT /user/{username}`). Each one is a new client, DTO, steps class
-  and feature file.
-- **More Pet cases.** `PUT /pet`, `GET /pet/findByStatus`, the `api_key` header on `DELETE`, and malformed
-  JSON bodies.
+- **CI**: on-demand and nightly runs; publish TRX and an HTML report (e.g. Allure) per run.
+- **More Pet operations**: `PUT /pet`, `GET /pet/findByStatus`.
+- **More endpoints**: Store and User, each a new client, DTO, steps class and feature file.
