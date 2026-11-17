@@ -13,6 +13,9 @@ public class PetApiClient() : RestApiClient(PetStoreConfig.BaseUrl)
     public RestResponse CreatePet(string body, string contentType) =>
         Execute(new RestRequest("/pet", Method.Post).AddStringBody(body, contentType));
 
+    public RestResponse CreatePet(string body, string contentType, string accept) =>
+        Execute(new RestRequest("/pet", Method.Post).AddStringBody(body, contentType).AddHeader(KnownHeaders.Accept, accept));
+
     // String Ids, so tests can send invalid ones ("abc").
     public RestResponse GetPetById(string petId) => Get($"/pet/{petId}");
 

@@ -1,8 +1,8 @@
 @pet @lifecycle
 Feature: Pet lifecycle
     The states a pet goes through (does not exist, exists, deleted) and the transitions between them via
-    POST /pet, GET /pet/{id} and DELETE /pet/{id}: requests on a pet that is not there, reusing a freed Id,
-    a duplicate Id. Deleting an existing pet is part of every scenario in PetStore_Pet_E2E.feature.
+    POST /pet, GET /pet/{id} and DELETE /pet/{id}: requests on a pet that is not there, deleting a pet twice,
+    reusing a freed Id, a duplicate Id. Deleting an existing pet is part of every scenario in PetStore_Pet_E2E.feature.
 
 @smoke
 Scenario: A pet that does not exist cannot be retrieved or deleted
@@ -25,7 +25,7 @@ Scenario: A pet that does not exist cannot be retrieved or deleted
     When the pet with Id '-1' is deleted via DELETE /pet/{id}
     Then the response should have '404' status code
 
-Scenario: A pet can be created again with the Id of a deleted pet
+Scenario: A deleted pet cannot be deleted again, and its Id can be used for a new pet
     Given the pets with the following Ids do not exist
         | Id                |
         | {run_id_int}40002 |
@@ -35,9 +35,17 @@ Scenario: A pet can be created again with the Id of a deleted pet
         | Name     | Marley                      |
         | PhotoUrl | https://example.com/pet.jpg |
     Then the response should have '200' status code
+    When the created pet named 'Marley' is retrieved via GET /pet/{id}
+    Then the response should have '200' status code and the returned pet should be exactly
+        | Field    | Value                       |
+        | Id       | {run_id_int}40002           |
+        | Name     | Marley                      |
+        | PhotoUrl | https://example.com/pet.jpg |
     When the created pet named 'Marley' is deleted via DELETE /pet/{id}
     Then the response should have '200' status code
     When the pet with Id '{run_id_int}40002' is retrieved via GET /pet/{id}
+    Then the response should have '404' status code
+    When the pet with Id '{run_id_int}40002' is deleted via DELETE /pet/{id}
     Then the response should have '404' status code
     When a pet is created with the following values via POST /pet
         | Field    | Value                       |
