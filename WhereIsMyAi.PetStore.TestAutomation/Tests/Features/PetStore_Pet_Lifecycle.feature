@@ -6,7 +6,6 @@ Feature: Pet lifecycle
 
 @smoke
 Scenario: A pet that does not exist cannot be retrieved or deleted
-    #todo: messages are not checked
     Given the pets with the following Ids do not exist
         | Id                |
         | {run_id_int}40003 |
@@ -17,10 +16,12 @@ Scenario: A pet that does not exist cannot be retrieved or deleted
     Then the response should have '404' status code
     When the pet with Id '0' is retrieved via GET /pet/{id}
     Then the response should have '404' status code
+    And the response message should be 'Pet not found'
     When the pet with Id '0' is deleted via DELETE /pet/{id}
     Then the response should have '404' status code
     When the pet with Id '-1' is retrieved via GET /pet/{id}
     Then the response should have '404' status code
+    And the response message should be 'Pet not found'
     When the pet with Id '-1' is deleted via DELETE /pet/{id}
     Then the response should have '404' status code
 

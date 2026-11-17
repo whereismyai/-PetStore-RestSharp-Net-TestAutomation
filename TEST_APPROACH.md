@@ -14,8 +14,8 @@ schema and the three operations in `swagger.json`:
 | Technique | Applied to | Example |
 |---|---|---|
 | Equivalence partitioning | every field, the body, path Ids, request and response media types | `status`: each enum value, not sent, not in the enum, wrong case, empty |
-| Boundary value analysis | Ids, name length, list length | body Id `-1` / `0` / `1`; `photoUrls: []` |
-| Decision table | the required fields `name` and `photoUrls` | both present, either missing, both missing: four rules |
+| Boundary value analysis | Ids, name length, list length | body Id `-1` / `0` / `1`; `tags: []` |
+| Decision table | the required fields `name` and `photoUrls` | both present, either missing, both missing: four rules; each field also empty (`""`, `[]`) |
 | State transition | the pet lifecycle: does not exist, exists, deleted | delete, then `GET` and `DELETE` again; create again with the freed Id |
 | Error guessing | typical client mistakes | empty body, broken JSON, wrong JSON types, wrong `Content-Type` |
 
@@ -205,8 +205,9 @@ Security headers belong to a separate security scan.
   checked value is visible in the feature file.
 - **Combined test cases.** 20 test cases (~17 s) cover 34 conditions. A failing test case can stand for any of
   its conditions: the failed step and its request in the log tell you which one.
-- **A negative scenario stops at its first wrong answer.** While BUG-003 is open, only its first invalid pet is
-  checked on a run with the gate off; the others are checked once that one is fixed.
+- **A negative scenario stops at its first wrong answer.** While BUG-003 is open, only the first invalid status
+  is checked on a run with the gate off; the others are checked once that one is fixed. Required fields are the
+  exception: each missing or empty field is its own test case (S7), so all of them are checked.
 - **Blocked scenarios are skipped, not run as known failures.** No side effects on the shared server and a
   green run, but a fix is only noticed when you run them with the gate off. This also applies to BUG-002, which
   reproduces on some runs only.

@@ -1,7 +1,7 @@
 @pet @e2e
 Feature: Pet end to end
     What POST /pet stores, GET /pet/{id} returns and DELETE /pet/{id} removes: required fields only, all fields,
-    each status, boundary Ids and name lengths, generated Ids, tags and photo URLs shared by two pets; names in
+    each status, boundary Ids, a long name, generated Ids, tags and photo URLs shared by two pets; names in
     English and Ukrainian with emoji and brackets, tags also in Spanish and French with special characters.
 
 Scenario Outline: A pet can be created, read back and deleted
@@ -43,7 +43,7 @@ Scenario Outline: A pet can be created, read back and deleted
         | case                               | id                         | name                                                                                                                                                                                                                                                             | status    |
         | available, 256-character name      | {run_id_int}10002          | AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA | available |
         | pending, Ukrainian name with emoji | {run_id_int}10003          | Кіт у чоботях 🐈                                                                                                                                                                                                                                                 | pending   |
-        | sold, empty name, 18-digit Id      | {run_id_int}00000000000001 |                                                                                                                                                                                                                                                                  | sold      |
+        | sold, 18-digit Id                  | {run_id_int}00000000000001 | Salem                                                                                                                                                                                                                                                            | sold      |
 
     # Id 1 cannot take the {run_id_int} prefix and can be shared with other users of the public server.
     @shared-ids
