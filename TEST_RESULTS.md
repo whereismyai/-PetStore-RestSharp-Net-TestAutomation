@@ -9,19 +9,19 @@ Run on 2026-11-17 against `https://petstore.swagger.io/v2`:
 
 | Total | Passed | Failed | Skipped (open bug) | Duration |
 |---|---|---|---|---|
-| 24 | 13 | 0 | 11 | ~17 s |
+| 26 | 13 | 0 | 13 | ~18 s |
 
 Plus 44 Core unit tests, all passing (~0.1 s). Smoke suite (`@smoke`, category `smoke` below): 4 test cases, all
 passing (~5 s).
 
 - **Green run.** Every test that can pass on today's API passes.
-- **11 skipped test cases are not gaps.** Each one asserts the correct behaviour for one of 6 open API bugs and
+- **13 skipped test cases are not gaps.** Each one asserts the correct behaviour for one of 6 open API bugs and
   stays skipped until that bug is fixed. A skipped test means "not verified on the current build", and its skip
   reason names the bug.
 
 ## Results by scenario
 
-A scenario outline runs once per `Examples` row, so 16 scenarios give 24 test cases. The scenarios are split
+A scenario outline runs once per `Examples` row, so 16 scenarios give 26 test cases. The scenarios are split
 into four feature files, one category each (see [TEST_APPROACH.md](TEST_APPROACH.md#four-feature-files-one-question-each)).
 
 | # | Category | Scenario | Test cases | Result |
@@ -32,7 +32,7 @@ into four feature files, one category each (see [TEST_APPROACH.md](TEST_APPROACH
 | S4 | e2e | Pets created without a positive Id get different generated Ids | 1 | Skipped: [BUG-002](Bugs/BUG-002.md) |
 | S5 | validation, smoke | A request without a readable pet is rejected and nothing is stored | 1 | Pass |
 | S6 | validation | A pet can be created with an empty tags list | 1 | Pass |
-| S7 | validation | A pet with a missing or empty required field is rejected with 405 Invalid input and not stored | 5 | Skipped: [BUG-003](Bugs/BUG-003.md) |
+| S7 | validation | A pet with a missing, null or empty required field is rejected with 405 Invalid input and not stored | 7 | Skipped: [BUG-003](Bugs/BUG-003.md) |
 | S8 | validation | A pet with an invalid status is rejected with 405 Invalid input and not stored | 1 | Skipped: [BUG-003](Bugs/BUG-003.md) |
 | S9 | validation | A pet with a value of the wrong JSON type is rejected with 405 Invalid input and not stored | 1 | Skipped: [BUG-007](Bugs/BUG-007.md) |
 | S10 | validation | Getting or deleting a pet by an invalid Id is rejected with 400 | 1 | Skipped: [BUG-004](Bugs/BUG-004.md) |
@@ -42,7 +42,7 @@ into four feature files, one category each (see [TEST_APPROACH.md](TEST_APPROACH
 | S14 | http | Replies are JSON by default and XML when the Accept header asks for it, until the pet is deleted | 1 | Pass |
 | S15 | http | Getting a pet in a media type the API does not produce is rejected with 406 Not Acceptable | 1 | Skipped: [BUG-006](Bugs/BUG-006.md) |
 | S16 | http | A pet is accepted as XML, rejected as plain text, and deleted with the api_key header | 1 | Pass |
-| | | **Total** | **24** | **13 pass, 11 skipped** |
+| | | **Total** | **26** | **13 pass, 13 skipped** |
 
 ## Coverage matrix
 
@@ -57,8 +57,8 @@ while its bug is open.
 |---|---|---|---|---|
 | Body | DT | `name` and `photoUrls` present with a value (required fields only) | S1 | Pass |
 | Body | DT | `name` missing / `photoUrls` missing / both missing | S7 | Blocked: BUG-003 |
-| `name` (required) | EP | missing / empty `""` (assumption: a required field holds a value) / a value | S7 / S7 / S1-S3 | Blocked: BUG-003 / Blocked: BUG-003 / Pass |
-| `photoUrls` (required) | EP | missing / empty `[]` (assumption, as for `name`) / one or more values | S7 / S7 / S1-S3 | Blocked: BUG-003 / Blocked: BUG-003 / Pass |
+| `name` (required) | EP | missing / `null` / empty `""` (assumption: a required field holds a value) / a value | S7 / S7 / S7 / S1-S3 | Blocked: BUG-003 / Blocked: BUG-003 / Blocked: BUG-003 / Pass |
+| `photoUrls` (required) | EP | missing / `null` / empty `[]` (assumption, as for `name`) / one or more values | S7 / S7 / S7 / S1-S3 | Blocked: BUG-003 / Blocked: BUG-003 / Blocked: BUG-003 / Pass |
 | Body | EP | all fields | S3 | Pass |
 | Body | EP | empty (no data) -> `405`; broken JSON -> `400` (observation), not stored | S5 | Pass |
 | Body | EP | a JSON array instead of one pet | S9 | Blocked: BUG-007 |
@@ -93,7 +93,7 @@ while its bug is open.
 | `api_key` header (`DELETE`) | EP | sent / not sent | S16 / S1 | Pass |
 
 In total: 35 rows: 22 pass, 11 blocked by open bugs, and 2 required-field rows whose value partition passes
-while missing and empty are blocked. What is deliberately not covered is listed in
+while missing, `null` and empty are blocked. What is deliberately not covered is listed in
 [TEST_APPROACH.md](TEST_APPROACH.md#scope).
 
 ## What each step checks
@@ -113,7 +113,7 @@ Every expected result has a basis (see [TEST_APPROACH.md](TEST_APPROACH.md#why-w
 | `the created pets should have different Ids` | two pets without a positive Id get two Ids | assumption: one Id, one pet | S4 |
 | `POST` of an empty body + `status code` | `405` | contract (`405 Invalid input`) | S5 |
 | `POST` of broken JSON + `status code` | `400` | observation: the spec declares only `405`; `400` is the HTTP code for a malformed request | S5 |
-| `POST` of an invalid pet + `status code` | `405` | contract (`405 Invalid input`; `name` and `photoUrls` required, `status` enum, `Pet` field types); for an empty `name` or `photoUrls`: assumption, a required field holds a value (the spec sets no `minLength` / `minItems`) | S7-S9 |
+| `POST` of an invalid pet + `status code` | `405` | contract (`405 Invalid input`; `name` and `photoUrls` required, `status` enum, `Pet` field types, no `null` in Swagger 2.0); for an empty `name` or `photoUrls`: assumption, a required field holds a value (the spec sets no `minLength` / `minItems`) | S7-S9 |
 | `GET` of a rejected pet + `status code` | `404` | assumption: a rejected pet is not stored | S5, S7-S9, S16 |
 | `When ... is deleted via DELETE /pet/{id}` + `status code` | `200` for an existing pet, with or without `api_key` | observation: the spec declares only `400` and `404`; `api_key` is an optional header (contract) | S1-S3, S12, S14, S16 |
 | `the response message should be '<id>'`, after `DELETE` | the deleted pet's Id | observation | S1 |
@@ -152,12 +152,12 @@ folder), to confirm that each bug is still there:
 |---|---|---|
 | [BUG-001](Bugs/BUG-001.md) | `409`, existing pet unchanged (assumption, to be agreed) | `200`, the existing pet is silently overwritten |
 | [BUG-002](Bugs/BUG-002.md) | a distinct generated Id per pet | on some runs, both pets get `9223372036854775807`, so the second overwrites the first |
-| [BUG-003](Bugs/BUG-003.md) | `405 Invalid input`; nothing stored (assumption) | `200`, a pet with `name` or `photoUrls` missing or empty, without both, or with `status` `flying`, `Available` or empty is stored |
+| [BUG-003](Bugs/BUG-003.md) | `405 Invalid input`; nothing stored (assumption) | `200`, a pet with `name` or `photoUrls` missing, `null` or empty, without both, or with `status` `flying`, `Available` or empty is stored |
 | [BUG-004](Bugs/BUG-004.md) | `400` for `GET` and `DELETE` with `abc` or int64 maximum + 1 | `404` with `java.lang.NumberFormatException ...` as the message |
 | [BUG-006](Bugs/BUG-006.md) | `406` for `GET` with `Accept: text/plain` (assumption, to be agreed) | `500` with an HTML page and a Java stack trace |
 | [BUG-007](Bugs/BUG-007.md) | `405 Invalid input` for a field of the wrong JSON type or an array body; nothing stored (assumption) | `500`, `something bad happened`; nothing is stored |
 
-On 2026-11-17, 10 of the 11 test cases failed exactly as their bug describes. S4 (BUG-002) passed on that run:
+On 2026-11-17, 12 of the 13 test cases failed exactly as their bug describes. S4 (BUG-002) passed on that run:
 the bug does not reproduce every time.
 
 [BUG-005](Bugs/BUG-005.md) (`DELETE` of a missing pet returns `404` with an empty body) was closed as **not a

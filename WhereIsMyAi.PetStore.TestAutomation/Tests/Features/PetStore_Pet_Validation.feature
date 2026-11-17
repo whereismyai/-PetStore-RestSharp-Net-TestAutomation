@@ -36,7 +36,7 @@ Scenario: A pet can be created with an empty tags list
         | PhotoUrl | https://example.com/pet.jpg |
 
 @bug:BUG-003
-Scenario Outline: A pet with a missing or empty required field is rejected with 405 Invalid input and not stored
+Scenario Outline: A pet with a missing, null or empty required field is rejected with 405 Invalid input and not stored
     Given the pets with the following Ids do not exist
         | Id               |
         | {run_id_int}<id> |
@@ -49,12 +49,14 @@ Scenario Outline: A pet with a missing or empty required field is rejected with 
     Then the response should have '404' status code
 
     Examples:
-        | case              | id    | fields                                                   |
-        | name missing      | 30001 | "photoUrls": ["https://example.com/pet.jpg"]             |
-        | name empty        | 30002 | "name": "", "photoUrls": ["https://example.com/pet.jpg"] |
-        | photoUrls missing | 30003 | "name": "Rex"                                            |
-        | photoUrls empty   | 30004 | "name": "Rex", "photoUrls": []                           |
-        | both missing      | 30005 | "status": "available"                                    |
+        | case              | id    | fields                                                     |
+        | name missing      | 30001 | "photoUrls": ["https://example.com/pet.jpg"]               |
+        | name null         | 30006 | "name": null, "photoUrls": ["https://example.com/pet.jpg"] |
+        | name empty        | 30002 | "name": "", "photoUrls": ["https://example.com/pet.jpg"]   |
+        | photoUrls missing | 30003 | "name": "Rex"                                              |
+        | photoUrls null    | 30007 | "name": "Rex", "photoUrls": null                           |
+        | photoUrls empty   | 30004 | "name": "Rex", "photoUrls": []                             |
+        | both missing      | 30005 | "status": "available"                                      |
 
 @bug:BUG-003
 Scenario: A pet with an invalid status is rejected with 405 Invalid input and not stored
