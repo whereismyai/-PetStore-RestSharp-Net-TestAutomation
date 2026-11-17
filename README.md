@@ -55,7 +55,7 @@ the file, which is how CI sets them.
 Common runs:
 
 ```bash
-dotnet test --filter "TestCategory=smoke"                 # smoke suite: the 8 core cases, ~6 s
+dotnet test --filter "TestCategory=smoke"                 # smoke suite: the 4 core cases, ~5 s
 dotnet test --filter "TestCategory=e2e"                   # one feature file: e2e, validation, lifecycle or http
 dotnet test --filter "TestCategory!~bug"                  # skip every bug-linked scenario
 dotnet test --filter "TestCategory~bug"                   # only bug-linked scenarios

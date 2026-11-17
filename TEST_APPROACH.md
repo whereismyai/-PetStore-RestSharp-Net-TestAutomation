@@ -3,7 +3,10 @@
 How the suite is designed and why. For the current results and coverage, see [TEST_RESULTS.md](TEST_RESULTS.md).
 For how to run the tests, see [README.md](README.md).
 
-## Granular: one test condition per test case
+## Few scenarios, every condition covered
+
+Most equivalence classes and boundaries belong in the backend's own unit and integration tests. This project
+has no access to them, so it covers them from the outside with as few end-to-end test cases as possible.
 
 The test conditions come from the ISTQB black-box techniques (CTFL v4.0, chapter 4.2), applied to the `Pet`
 schema and the three operations in `swagger.json`:
@@ -16,13 +19,18 @@ schema and the three operations in `swagger.json`:
 | State transition | the pet lifecycle: does not exist, exists, deleted | delete, then `GET` and `DELETE` again; create again with the freed Id |
 | Error guessing | typical client mistakes | empty body, broken JSON, wrong JSON types, wrong `Content-Type` |
 
-- **One test condition per test case.** Each scenario, or each `Examples` row, covers one partition, boundary,
-  rule or transition, and its name says which. When a test fails, its name tells you what broke, and the
-  coverage matrix in [TEST_RESULTS.md](TEST_RESULTS.md#coverage-matrix) maps every condition to its test.
-- **Invalid partitions one at a time.** A negative test case has exactly one thing wrong, so one fault cannot
-  hide another.
-- **Steps check what the condition needs.** A creation scenario reads the pet back; it does not also delete it.
-  Deletion is its own transition, in the lifecycle scenarios.
+- **Valid conditions are combined.** One `Examples` row carries several valid partitions at once (a status, a
+  kind of name, an Id boundary), so each one is covered by at least one row (ISTQB "each choice" coverage).
+  Every row walks the whole lifecycle: create, read back, delete, read again.
+- **Invalid conditions run one after another.** A negative scenario sends its invalid pets in sequence, each
+  with exactly one thing wrong, so no request can hide another's fault. The scenario stops at the first wrong
+  answer; the remaining requests are checked once that one is fixed.
+- **Every status code is followed by the data.** After a `POST` or `DELETE`, a `GET` checks what is really
+  stored: the whole pet, or `404` for a deleted or rejected one. Only an invalid path Id has no data to read.
+- **Bug-linked checks stay apart.** A scenario that asserts a known bug is skipped while the bug is open, so it
+  never carries a check that passes today.
+- **Traceable.** The coverage matrix in [TEST_RESULTS.md](TEST_RESULTS.md#coverage-matrix) maps every condition
+  to the test case that covers it.
 
 ## Four feature files, one question each
 
@@ -42,24 +50,24 @@ new endpoint group gets its own files, for example `PetStore_Store_E2E.feature`.
 Two size limits keep files and scenarios readable. Both are guidelines against extremes, not hard caps:
 
 - **A feature file stays around 200 lines.** A little over is fine (the longest today, `PetStore_Pet_E2E.feature`,
-  has 183); a file that keeps growing is split by question, not by HTTP method.
-- **A scenario has at most 16 steps** (`Given`/`When`/`Then`/`And` lines), the longest today (S24). A longer
+  has 163); a file that keeps growing is split by question, not by HTTP method.
+- **A scenario has at most 16 steps** (`Given`/`When`/`Then`/`And` lines), the longest today (S14). A longer
   scenario needs a reason, for example one pet walked through every kind of reply. Otherwise split it.
 
 ## Smoke suite
 
-The core cases are tagged `@smoke`. They form a quick check (~6 s) that the API works at all, before or instead
+The core cases are tagged `@smoke`. They form a quick check (~5 s) that the API works at all, before or instead
 of the full run: `dotnet test --filter "TestCategory=smoke"`.
 
-| Operation | Smoke test cases |
+| Smoke test case | What it covers |
 |---|---|
-| `POST` + `GET` | required fields only (S1), all fields (S2), Id not sent (S4, first row) |
-| `DELETE` | delete, then `GET` and `DELETE` give `404` (S17) |
-| Missing pet | `GET` (S19) and `DELETE` (S20) of a pet that was never created |
-| Invalid input | empty body -> `405` (S13), broken JSON -> `400` (S14) |
+| S1, required fields only row | `POST`, `GET`, `DELETE`, then `GET` -> `404 Pet not found` |
+| S3 | generated Id for a pet sent without an Id or with `0`, read back and deleted |
+| S6 | empty body -> `405`, broken JSON -> `400`, nothing stored |
+| S11 | `GET` and `DELETE` of a pet that does not exist -> `404` |
 
 A smoke test is never linked to a bug: it must pass on today's API, so a red smoke run means a real outage or
-regression. The tag goes on the scenario, or on its own `Examples` block for a single row (S4), so the smoke
+regression. The tag goes on the scenario, or on its own `Examples` block for a single row (S1), so the smoke
 suite repeats no scenario.
 
 ## Bugs are covered at the level we can reach
@@ -111,11 +119,10 @@ request, checks the answer, and only then takes the next step.
 - **Every step has its own expected result.** If an answer is wrong, the scenario stops right there, and the
   failed step tells you what broke.
 - **The next step checks the one before.** A reply can be wrong, so we don't take it on trust:
-  - after `POST`, a `GET` reads back what was really stored (S1-S9, S18, S26);
-  - after `DELETE`, a `GET` checks the pet is gone and a second `DELETE` checks there's nothing left to
-    delete (S17);
-  - after deleting one of two pets, a `GET` checks the other one is untouched (S5);
-  - after a rejected `POST`, a `GET` checks nothing was stored (S10, S11, S27).
+  - after `POST`, a `GET` reads back what was really stored (S1-S5, S12-S16);
+  - after `DELETE`, a `GET` checks the pet is gone (S1-S3, S12, S14, S16);
+  - after deleting one of two pets, a `GET` checks the other one is untouched (S2);
+  - after a rejected `POST`, a `GET` checks nothing was stored (S6-S9, S16).
 
 ### Why we expect what we expect
 
@@ -146,10 +153,10 @@ about which requests a scenario sends.
 - **Messages only where the server is known to send them.** In the spec, the `400`, `404` and `405`
   responses have a `description` but no `schema`, and in OpenAPI 2.0 no schema means no response body. So
   the bug scenarios check status codes only. The `message` field is compared exactly in two cases, both
-  observations of the demo server: `DELETE` of an existing pet returns its Id (S17), and `GET` of a pet that
-  is not there returns `Pet not found` (S17, S19, S21).
+  observations of the demo server: `DELETE` of an existing pet returns its Id (S1), and `GET` of a pet that
+  is not there returns `Pet not found` (S1, S11).
 - **Media type, not other headers.** The only response header the contract defines for these endpoints is
-  `Content-Type` (`produces`: JSON or XML), so it is the only one checked, all in S24: `application/json` once
+  `Content-Type` (`produces`: JSON or XML), so it is the only one checked, all in S14: `application/json` once
   per kind of reply, `application/xml` when `Accept` asks for it. Only the media type is compared, not the
   `charset`. The data scenarios do not repeat it.
 - **Varied test data.** Names in English and Ukrainian, with emoji, digits and brackets; tags add Spanish,
@@ -194,10 +201,12 @@ Security headers belong to a separate security scan.
 
 ## Trade-offs
 
-- **Verbose expected pets.** Each expected pet repeats the request table (twice in S2), but every
+- **Verbose expected pets.** Each expected pet repeats the request table (three times in S1), but every
   checked value is visible in the feature file.
-- **More, smaller scenarios.** One condition per test case means more pets on the shared server and a longer
-  run (~26 s for 47 test cases), but every failure names a single condition.
+- **Combined test cases.** 20 test cases (~17 s) cover 34 conditions. A failing test case can stand for any of
+  its conditions: the failed step and its request in the log tell you which one.
+- **A negative scenario stops at its first wrong answer.** While BUG-003 is open, only its first invalid pet is
+  checked on a run with the gate off; the others are checked once that one is fixed.
 - **Blocked scenarios are skipped, not run as known failures.** No side effects on the shared server and a
   green run, but a fix is only noticed when you run them with the gate off. This also applies to BUG-002, which
   reproduces on some runs only.
@@ -208,9 +217,9 @@ Security headers belong to a separate security scan.
   another user's pet `1`, if there is one, and the scenario then creates and deletes its own. That is
   acceptable on a public demo server. Only that example is tagged `@shared-ids` (its own `Examples` block), so
   runs can leave it out.
-- **Duplicate Id: two scenarios; invalid pet: one.** For a duplicate Id, one scenario asserts the assumed
-  `409` (S22) and the other only that the existing pet is kept (S23), so S23 turns green with any error code. For
-  an invalid pet (S10, S11), "not stored" is checked only after the `405`. A `GET` by the sent Id after an accepted
-  or failed `POST` proves nothing, because the pet could be stored under another Id.
+- **"Not stored" is checked only after a rejection.** For a duplicate Id (S13), the `GET` of the original pet
+  runs only after the assumed `409`; for an invalid pet (S6-S9), the `GET` by the sent Id runs only after the
+  rejection. A `GET` by the sent Id after an accepted or failed `POST` proves nothing, because the pet could be
+  stored under another Id.
 - **The upper Id boundary is 18 digits, not int64 maximum - 1.** Generated Ids look like the highest Id + 1,
   so a pet near the maximum would make every user's generated Ids overflow and collide (the BUG-002 symptom).
